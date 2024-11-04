@@ -351,8 +351,11 @@ class Meow_MGL_Rest
 	}
 
 	function rest_latest_photos( $request ) {
+
 		$search = trim( $request->get_param('search') );
 		$offset = trim( $request->get_param('offset') );
+		$limit = trim( $request->get_param('limit') );
+
 		$except = json_decode( trim( $request->get_param('except') ), true);
 		$unusedImages = trim( $request->get_param('unusedImages') );
 
@@ -401,7 +404,7 @@ class Meow_MGL_Rest
 				AND p.post_status='inherit' 
 				$where_search_clause 
 				ORDER BY p.post_modified DESC 
-				LIMIT %d, 23", $offset
+				LIMIT %d, $limit", $offset
 			), OBJECT
 		);
 		$posts_count = (int)$wpdb->get_var(

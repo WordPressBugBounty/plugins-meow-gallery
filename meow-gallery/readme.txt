@@ -2,9 +2,9 @@
 Contributors: TigrouMeow
 Tags: gallery, masonry, image, block, lightroom
 Requires at least: 6.0
-Tested up to: 6.6
+Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.2.0
+Stable tag: 5.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -50,10 +50,14 @@ Languages: English.
 
 == Changelog ==
 
+= 5.2.1 (2024/11/04) =
+* Add: "Load More" option for Infinite Scroll.
+* Fix: Media Selector limitations.
+* Note: We need some love! If you have a moment, please write a little [review for the Meow Gallery](https://wordpress.org/support/plugin/meow-gallery/reviews/?rate=5#new-post). Thank you! 💕
+
 = 5.2.0 (2024/10/17) =
 * Update: PhotoSwipe now works with Infinite Scrolling.
 * Fix: Gallery initial state saved in the block.
-* Note: Meow needs some love! If you have a moment, please write a little [review for the Meow Gallery](https://wordpress.org/support/plugin/meow-gallery/reviews/?rate=5#new-post). Thank you! 💕
 
 = 5.1.9 (2024/08/25) =
 * Fix: Fixed link attributes for maps.
