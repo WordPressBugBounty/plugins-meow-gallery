@@ -500,6 +500,7 @@ class Meow_MGL_Core {
 			'layout' => 'tiles',
 			'captions' => 'none',
 			'captions_alignment' => 'center',
+			'captions_background' => 'fade-black',
 			'animation' => false,
 			'image_size' => 'srcset',
 			'infinite' => false,
