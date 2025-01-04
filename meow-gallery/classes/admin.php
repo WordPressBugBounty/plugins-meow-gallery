@@ -62,6 +62,8 @@ class Meow_MGL_Admin extends MeowCommon_Admin {
 			'rest_nonce' => wp_create_nonce( 'wp_rest' ),
 			'wplr_collections' => $wplr ? $wplr->read_collections_recursively() : [],
 			'options' => $this->core->get_all_options(),
+			'galleries' => get_option( 'mgl_shortcodes', array() ),
+			'collections' => get_option( 'mgl_collections', array() ),
 		] );
 
 		wp_enqueue_script( 'mgl-admin-js' );

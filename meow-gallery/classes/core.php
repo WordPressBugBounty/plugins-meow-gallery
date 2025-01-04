@@ -103,14 +103,24 @@ class Meow_MGL_Core {
 		$image_ids = array();
 		$layout = '';
 
+		if ( isset( $atts['id'] ) && isset( $atts['ids'] ) ) {
+
+			// Check if the ids are empty, then we can use the id
+			if ( empty( $atts['ids'] ) ) {
+				unset( $atts['ids'] );
+			} else {
+				error_log( "⚠️ Meow Gallery: in gallery $atts[id] both 'id' and 'ids' attributes are used in the same shortcode. 'id' will be ignored." );
+			}
+		}
+
 		// Get the IDs
 		#region media_ids
-		if ( isset( $atts['id'] ) && !isset( $atts['ids'] ) ) {
+		if ( (isset( $atts['id'] ) && !empty($atts['id']) ) && !isset( $atts['ids'] ) ) {
 			$shortcode_id = $atts['id'];
 
 			$shortcodes = get_option( 'mgl_shortcodes', array() );
 			if ( !isset( $shortcodes[$shortcode_id] ) ) {
-				return "<p class='meow-error'><b>Meow Gallery:</b> This ID wasn't found in the Gallery Manager.</p>";
+				return "<p class='meow-error'><b>Meow Gallery:</b> This ID wasn't found in the Gallery Manager. (ID: $shortcode_id)</p>";
 			}
 
 			if (!isset($shortcodes[$shortcode_id]['medias']) || !isset($shortcodes[$shortcode_id]['medias']['thumbnail_ids'])) {
@@ -126,10 +136,6 @@ class Meow_MGL_Core {
 			$atts = array_merge( $atts, $shortcodes[$shortcode_id] );
 			unset($atts['medias']);
 			
-		}
-
-		if ( isset( $atts['id'] ) && isset( $atts['ids'] ) ) {
-			error_log( "⚠️ Meow Gallery: in gallery $atts[id] both 'id' and 'ids' attributes are used in the same shortcode. 'id' will be ignored." );
 		}
 
 		if ( isset( $atts['ids'] ) ) {
@@ -180,8 +186,6 @@ class Meow_MGL_Core {
 			$image_ids = implode(',', $featured_images);
 			$posts_ids = array_values($posts_ids);
 		}
-
-
 
 		// Filter the IDs
 		$ids = is_array( $image_ids ) ? $image_ids : explode( ',', $image_ids );
@@ -291,12 +295,17 @@ class Meow_MGL_Core {
 
 		// Get the class and data attributes
 		$class = $this->get_mgl_root_class( $atts );
-		$data_atts = $this->get_data_as_json( $atts );
-		$data_gallery_options = $this->get_data_as_json( $gallery_options );
-		$data_gallery_images = $this->get_data_as_json( $gallery_images );
+		$data_atts            = esc_attr( wp_json_encode( $atts            ) );
+		$data_gallery_options = esc_attr( wp_json_encode( $gallery_options ) );
+		$data_gallery_images  = esc_attr( wp_json_encode( $gallery_images  ) );
 
-		$html = '<div class="'. $class . '" data-gallery-options="' . $data_gallery_options . 
-		'" data-gallery-images="'. $data_gallery_images .'" data-atts="'. $data_atts . '">';
+		$html = sprintf(
+			'<div class="%s" data-gallery-options="%s" data-gallery-images="%s" data-atts="%s">',
+			esc_attr( $class ),
+			$data_gallery_options,
+			$data_gallery_images,
+			$data_atts
+		);
 
 		// Run at /wp-includes/formatting.php on line 3501
 		$textarr = preg_split( '/(<.*>)/U', $html , -1, PREG_SPLIT_DELIM_CAPTURE);

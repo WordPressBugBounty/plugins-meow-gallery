@@ -116,7 +116,15 @@ class Meow_MGL_Rest
 		$params = json_decode( $params );
 		$params->ids = implode( ',', $params->ids );
 		$atts = (array) $params;
-		$html = $this->core->gallery( $atts, true );
+
+		$is_collection = isset( $atts['collection'] ) && !empty( $atts['collection'] );
+		if ( $is_collection ) {
+			$html = do_shortcode( '[meow-collection id="' . $atts['collection'] . '"]' );
+		} else {
+			$html = $this->core->gallery( $atts, true );
+		}
+
+		
 		return new WP_REST_Response( [ 'success' => true, 'data' => $html ], 200 );
 	}
 
