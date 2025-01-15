@@ -4,7 +4,7 @@ Tags: gallery, masonry, image, block, lightroom
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.2.3
+Stable tag: 5.2.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,6 +49,10 @@ You can find more information on this plugin on [Meow Apps: Meow Gallery](https:
 Languages: English.
 
 == Changelog ==
+
+= 5.2.4 (2025/01/15) =
+* Fix: Issue with how the JSON attributes were escaped.
+* Update: Enhanced the UI of the blocks.
 
 = 5.2.3 (2025/01/04) =
 * Update: Improved escaping related to JSON gallery attributes.

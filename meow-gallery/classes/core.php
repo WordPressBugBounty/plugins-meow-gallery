@@ -295,9 +295,9 @@ class Meow_MGL_Core {
 
 		// Get the class and data attributes
 		$class = $this->get_mgl_root_class( $atts );
-		$data_atts            = esc_attr( wp_json_encode( $atts            ) );
-		$data_gallery_options = esc_attr( wp_json_encode( $gallery_options ) );
-		$data_gallery_images  = esc_attr( wp_json_encode( $gallery_images  ) );
+		$data_atts            = $this->get_data_as_json( $atts );
+		$data_gallery_options = $this->get_data_as_json( $gallery_options );
+		$data_gallery_images  = $this->get_data_as_json( $gallery_images );
 
 		$html = sprintf(
 			'<div class="%s" data-gallery-options="%s" data-gallery-images="%s" data-atts="%s">',
@@ -846,7 +846,7 @@ class Meow_MGL_Core {
 	}
 
 	public function get_data_as_json( $data ) {
-		return htmlspecialchars( json_encode( $data ), ENT_QUOTES, 'UTF-8' );
+		return esc_attr( htmlspecialchars( wp_json_encode( $data ), ENT_QUOTES, 'UTF-8' ) );
 	}
 
 	public function generate_uniqid( $length = 13 ) {
