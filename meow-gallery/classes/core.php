@@ -694,7 +694,7 @@ class Meow_MGL_Core {
 			$video = wp_get_attachment_url( $id );
 			$video = apply_filters( 'mgl_video', $video, $id, $data );
 			if ( !empty( $video ) ) {
-				return '<video autoplay loop muted playsinline><source src="' . $video . '" type="' . $media_type . '"></video>';
+				return '<video class="wp-video-'. $id .'" controls="controls" onclick="() => this.play();"><source src="' . $video . '" type="' . $media_type . '"></video>';
 			}
 		}
 
@@ -755,7 +755,11 @@ class Meow_MGL_Core {
 		else if ( $link === 'media' || $link === 'file' ) {
 			$wpUploadDir = wp_upload_dir();
 			$updir = trailingslashit( $wpUploadDir['baseurl'] );
-			$link_url = $updir . $data['meta']['file'];
+			if ( isset( $data['meta']['file'] ) ) {
+				$link_url = $updir . $data['meta']['file'];
+			} else {
+				$link_url = get_permalink( (int)$id );
+			}
 		}
 		else if ( $link === null ){
 			$link_url = get_post_meta( $id, '_gallery_link_url', true );

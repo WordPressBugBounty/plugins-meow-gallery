@@ -4,7 +4,7 @@ Tags: gallery, masonry, image, block, lightroom
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.2.4
+Stable tag: 5.2.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -50,6 +50,14 @@ Languages: English.
 
 == Changelog ==
 
+= 5.2.5 (2025/02/17) =
+* Add: Added wp-video-id class to videos in galleries for better styling and identification.
+* Update: Improved video element handling and fixed boolean attributes in XML.
+* Fix: Added an attachment fallback when link="file" is empty for videos.
+* Fix: Corrected boolean attributes in XML for video elements.
+* Update: Refactored ShortcodeMaker to use NekoShortcode for better shortcode management.
+* Note: We need some love! If you have a moment, please write a little [review for the Meow Gallery](https://wordpress.org/support/plugin/meow-gallery/reviews/?rate=5#new-post). Thank you! 💕
+
 = 5.2.4 (2025/01/15) =
 * Fix: Issue with how the JSON attributes were escaped.
 * Update: Enhanced the UI of the blocks.
@@ -60,7 +68,6 @@ Languages: English.
 * Add: Native horizontal scrolling in Horizontal layout settings.
 * Update: Removed max attributes for layouts.
 * Add: Galleries and Collections Management now available in the Gallery Block.
-* Note: We need some love! If you have a moment, please write a little [review for the Meow Gallery](https://wordpress.org/support/plugin/meow-gallery/reviews/?rate=5#new-post). Thank you! 💕
 
 = 5.2.2 (2024/12/06) =
 * Add: Caption Backgrounds in the Settings.

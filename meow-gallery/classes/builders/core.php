@@ -103,9 +103,14 @@ abstract class Meow_MGL_Builders_Core {
 
 		$linkUrl = null;
 		if ( $this->link === 'attachment' )
+		{
 			$linkUrl = get_permalink( (int)$id );
+		}
 		else if ( $this->link === 'media' || $this->link === 'file' )
+		{
 			$linkUrl = $src;
+		}
+			
 		$linkUrl = apply_filters( 'mgl_link', $linkUrl, (int)$id, $data );
 		$isPreview = $this->isPreview;
 		ob_start();
