@@ -94,10 +94,13 @@ class Meow_MGL_Core {
 			}
 		}, $atts );
 
-
-
 		if ( isset( $atts['meow'] ) && $atts['meow'] === 'false' ) {
 			return gallery_shortcode( $atts );
+		}
+
+		// If the attributes contain "collection" then use the collection shortcode instead
+		if ( isset( $atts['collection'] ) && !empty( $atts['collection'] ) ) {
+			return do_shortcode( '[meow-collection id="' . $atts['collection'] . '"]' );
 		}
 
 		$image_ids = array();
@@ -118,24 +121,25 @@ class Meow_MGL_Core {
 		if ( (isset( $atts['id'] ) && !empty($atts['id']) ) && !isset( $atts['ids'] ) ) {
 			$shortcode_id = $atts['id'];
 
-			$shortcodes = get_option( 'mgl_shortcodes', array() );
-			if ( !isset( $shortcodes[$shortcode_id] ) ) {
-				return "<p class='meow-error'><b>Meow Gallery:</b> This ID wasn't found in the Gallery Manager. (ID: $shortcode_id)</p>";
+			try {
+				$shortcode = $this->get_gallery_by_id( $shortcode_id );
+			}
+			catch ( Exception $e ) {
+				return "<p class='meow-error'><b>Meow Gallery:</b> This ID wasn't found in the Gallery Manager. (ID: $shortcode_id). " . $e->getMessage() . "</p>";
 			}
 
-			if (!isset($shortcodes[$shortcode_id]['medias']) || !isset($shortcodes[$shortcode_id]['medias']['thumbnail_ids'])) {
+			if ( !isset( $shortcode['medias'] ) || !isset( $shortcode['medias']['thumbnail_ids'])) {
 				return "<p class='meow-error'><b>Meow Gallery:</b> Thumbnail IDs not found.</p>";
 			}
 
-			$image_ids = $shortcodes[$shortcode_id]['medias']['thumbnail_ids'];
+			$image_ids = $shortcode['medias']['thumbnail_ids'];
 
-			if (isset($shortcodes[$shortcode_id]['layout'])) {
-				$layout = $shortcodes[$shortcode_id]['layout'];
+			if ( isset( $shortcode['layout'] ) ) {
+				$layout = $shortcode['layout'];
 			}
 
-			$atts = array_merge( $atts, $shortcodes[$shortcode_id] );
-			unset($atts['medias']);
-			
+			$atts = array_merge( $atts, $shortcode );
+			unset( $atts['medias'] );
 		}
 
 		if ( isset( $atts['ids'] ) ) {
@@ -151,13 +155,14 @@ class Meow_MGL_Core {
 
 			if ( $num_posts > 0 ) {
 				
-				$latest_posts = get_posts( array( 'numberposts' => $num_posts ) );
-				$latest_posts_ids = array_map( function($x) { return $x->ID; }, $latest_posts );
+				$latest_posts = get_posts( [ 'numberposts' => $num_posts ] );
+				$latest_posts_ids = array_map( function( $x ) { return $x->ID; }, $latest_posts );
 
-				if (isset($atts['posts'])) {
+				if ( isset( $atts['posts'] ) ) {
 					error_log( "⚠️ Meow Gallery: in gallery $atts[id] both 'latest_posts' and 'posts' attributes are used in the same shortcode. 'latest_posts' will be merged with 'posts'.");
 					$atts['posts'] = array_merge( $latest_posts_ids, explode(',', $atts['posts']) );
-				} else {
+				}
+				else {
 					$atts['posts'] = implode( ',', $latest_posts_ids );
 				}
 			}
@@ -179,7 +184,7 @@ class Meow_MGL_Core {
 				}
 			}
 
-			if (count($posts_ids) !== count($featured_images)) {
+			if ( count( $posts_ids ) !== count( $featured_images ) ) {
 				return "<p class='meow-error'><b>Meow Gallery:</b> The number of featured images and posts id should be the same.</p>";
 			}
 
@@ -864,6 +869,202 @@ class Meow_MGL_Core {
 			throw new Exception( "No cryptographically secure random function available." );
 		}
 		return substr( bin2hex( $bytes ), 0, $length );
+	}
+
+
+	public function get_gallery_by_id( $id ) {
+		global $wpdb;
+		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
+		$gallery = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $shortcodes_table WHERE id = %d", $id ), ARRAY_A );
+		if ( !$gallery ) {
+			throw new Exception( __( 'Gallery not found.', MGL_DOMAIN ));
+		}
+		$gallery['medias'] = maybe_unserialize( $gallery['medias'] );
+		$gallery['posts'] = $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null;
+
+		return $gallery;
+	}
+
+	public function get_galleries_by_ids( $ids ){
+		global $wpdb;
+		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
+		$galleries = [];
+		$ids_str = "'" . implode( "','", array_map( 'esc_sql', $ids )) . "'";
+		$query = "SELECT * FROM $shortcodes_table WHERE id IN ( $ids_str )";
+		$results = $wpdb->get_results( $query, ARRAY_A );
+		foreach ( $results as $gallery ) {
+			$galleries[$gallery['id']] = [
+				'name' => $gallery['name'],
+				'description' => $gallery['description'],
+				'layout' => $gallery['layout'],
+				'medias' => maybe_unserialize( $gallery['medias'] ),
+				'is_post_mode' => ( bool )$gallery['is_post_mode'],
+				'hero' => ( bool )$gallery['is_hero_mode'],
+				'posts' => $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null,
+				'latest_posts' => $gallery['latest_posts'],
+				'updated' => strtotime( $gallery['updated_at'] )
+			];
+		}
+		return $galleries;
+	}
+
+	public function get_galleries( $offset = 0, $limit = 10, $order = 'DESC' ) {
+		global $wpdb;
+		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
+		
+		// Check if table exists, if not fall back to option
+		$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$shortcodes_table'" ) === $shortcodes_table;
+		
+		if ( !$table_exists ) {
+			throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ));
+			return;
+		}
+		
+		// Use the new table
+		// Get total count
+		$total = $wpdb->get_var( "SELECT COUNT( * ) FROM $shortcodes_table" );
+		
+		// Get shortcodes with pagination and sorting
+		$query = $wpdb->prepare(
+			"SELECT * FROM $shortcodes_table ORDER BY updated_at $order LIMIT %d, %d",
+			$offset, $limit
+		);
+		
+		$results = $wpdb->get_results( $query, ARRAY_A );
+		$shortcodes = [];
+		
+		foreach ( $results as $gallery ) {
+			// Transform database format to match expected format
+			$shortcodes[$gallery['id']] = [
+				'name' => $gallery['name'],
+				'description' => $gallery['description'],
+				'layout' => $gallery['layout'],
+				'medias' => maybe_unserialize( $gallery['medias'] ),
+				'is_post_mode' => ( bool )$gallery['is_post_mode'],
+				'hero' => ( bool )$gallery['is_hero_mode'],
+				'posts' => $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null,
+				'latest_posts' => $gallery['latest_posts'],
+				'updated' => strtotime( $gallery['updated_at'] )
+			];
+		}
+
+		return [
+			'total' => $total,
+			'galleries' => $shortcodes
+		];
+	}
+
+	public function get_collection_by_id( $id ) {
+		global $wpdb;
+		$collections_table = $wpdb->prefix . 'mgl_collections';
+		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
+		
+		// Get the collection
+		$collection = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $collections_table WHERE id = %d", $id ), ARRAY_A );
+		if ( !$collection ) {
+			throw new Exception( __( 'Collection not found.', MGL_DOMAIN ));
+		}
+		$collection['galleries_ids'] = unserialize( $collection['galleries_ids'] );
+		
+		// Get the associated galleries
+		$galleries = [];
+		if ( !empty( $collection['galleries_ids'] )) {
+			$galleries_ids_str = "'" . implode( "','", array_map( 'esc_sql', $collection['galleries_ids'] )) . "'";
+			$galleries_query = "SELECT * FROM $shortcodes_table WHERE id IN ( $galleries_ids_str )";
+			$galleries_data = $wpdb->get_results( $galleries_query, ARRAY_A );
+			
+			foreach ( $galleries_data as $gallery ) {
+				// Transform database format to match expected format
+				$galleries[] = [
+					'id' => $gallery['id'],
+					'name' => $gallery['name'],
+					'description' => $gallery['description'],
+					'layout' => $gallery['layout'],
+					'medias' => unserialize( $gallery['medias'] ),
+					'is_post_mode' => ( bool )$gallery['is_post_mode'],
+					'hero' => ( bool )$gallery['is_hero_mode'],
+					'posts' => $gallery['posts'] ? unserialize( $gallery['posts'] ) : null,
+					'latest_posts' => $gallery['latest_posts'],
+					'updated' => strtotime( $gallery['updated_at'] )
+				];
+			}
+
+			// Format collection data
+			$collection['galleries'] = $galleries;
+		}
+
+		return $collection;
+	}
+
+	public function get_collections( $offset = 0, $limit = 10, $order = 'DESC' ) {
+		global $wpdb;
+		$collections_table = $wpdb->prefix . 'mgl_collections';
+		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
+		
+		// Check if table exists, if not fall back to option
+		$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$collections_table'" ) === $collections_table;
+		
+		if ( !$table_exists ) {
+			throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ));
+			return;
+		}
+		
+		// Get total count
+		$total = $wpdb->get_var( "SELECT COUNT( * ) FROM $collections_table" );
+		
+		// Get collections with pagination and sorting
+		$query = $wpdb->prepare(
+			"SELECT * FROM $collections_table ORDER BY updated_at $order LIMIT %d, %d",
+			$offset, $limit
+		);
+		
+		$collections = $wpdb->get_results( $query, ARRAY_A );
+		$result = [];
+		
+		foreach ( $collections as $collection ) {
+			$collection_id = $collection['id'];
+			$galleries_ids = unserialize( $collection['galleries_ids'] );
+			
+			// Get the associated galleries
+			$galleries = [];
+			if ( !empty( $galleries_ids )) {
+				$galleries_ids_str = "'" . implode( "','", array_map( 'esc_sql', $galleries_ids )) . "'";
+				$galleries_query = "SELECT * FROM $shortcodes_table WHERE id IN ( $galleries_ids_str )";
+				$galleries_data = $wpdb->get_results( $galleries_query, ARRAY_A );
+				
+				foreach ( $galleries_data as $gallery ) {
+					// Transform database format to match expected format
+					$gallery_item = [
+						'id' => $gallery['id'],
+						'name' => $gallery['name'],
+						'description' => $gallery['description'],
+						'layout' => $gallery['layout'],
+						'medias' => unserialize( $gallery['medias'] ),
+						'is_post_mode' => ( bool )$gallery['is_post_mode'],
+						'hero' => ( bool )$gallery['is_hero_mode'],
+						'posts' => $gallery['posts'] ? unserialize( $gallery['posts'] ) : null,
+						'latest_posts' => $gallery['latest_posts'],
+						'updated' => strtotime( $gallery['updated_at'] )
+					];
+					$galleries[] = $gallery_item;
+				}
+			}
+			
+			// Format collection data
+			$result[$collection_id] = [
+				'name' => $collection['name'],
+				'description' => $collection['description'],
+				'layout' => $collection['layout'],
+				'galleries_ids' => $galleries_ids,
+				'galleries' => $galleries,
+				'updated' => strtotime( $collection['updated_at'] )
+			];
+		}
+
+		return [
+			'total' => $total,
+			'collections' => $result
+		];
 	}
 }
 

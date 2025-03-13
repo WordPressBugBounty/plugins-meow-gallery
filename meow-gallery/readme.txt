@@ -4,7 +4,7 @@ Tags: gallery, masonry, image, block, lightroom
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 5.2.5
+Stable tag: 5.2.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,6 +49,18 @@ You can find more information on this plugin on [Meow Apps: Meow Gallery](https:
 Languages: English.
 
 == Changelog ==
+
+= 5.2.7 (2025/03/13) =
+* Update: Reworked the Block to support Manager shortcodes for better integration.
+* Add: Added support for the AVIF image format in the MediaSelector component.
+* Update: Refactored gallery and collection data retrieval to use core methods for consistency.
+* Fix: Resolved block display issues when selecting Gallery/Collection.
+* Update: Migrated Galleries and Collections from options to database tables for improved performance.
+* Update: Implemented React Query for Galleries and Collections to enhance data handling.
+* Fix: Corrected sorting issues in the Gallery Manager.
+* Fix: Fixed fetching of galleries data in the Gallery Manager.
+* Update: Improved Collections by integrating Neko Shortcode.
+* Fix: Addressed multi-page gallery selection issues in the Collection Maker.
 
 = 5.2.5 (2025/02/17) =
 * Add: Added wp-video-id class to videos in galleries for better styling and identification.
