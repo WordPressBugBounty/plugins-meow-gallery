@@ -114,6 +114,17 @@ class Meow_MGL_Rest
 				'size' => array( 'required' => true ),
 			)
 		) );
+
+		register_rest_route( $this->namespace, '/fetch_posts', array(
+			'methods' => 'POST',
+			'permission_callback' => array( $this->core, 'can_access_features' ),
+			'callback' => array( $this, 'rest_fetch_posts' ),
+			'args' => array(
+				'search' => array( 'required' => false ),
+				'offset' => array( 'required' => false, 'default' => 0 ),
+				'limit' => array( 'required' => false, 'default' => 10 ),
+			)
+		) );
 	}
 
 	function preview( WP_REST_Request $request ) {
@@ -174,6 +185,7 @@ class Meow_MGL_Rest
 			$description = $params['description'];
 			$posts = $params['posts'];
 			$latest_posts = $params['latest_posts'];
+			$lead_image_id = $params['lead_image_id'];
 			$is_post_mode = $params['is_post_mode'];
 			$is_hero_mode = $params['is_hero_mode'];
 
@@ -217,6 +229,7 @@ class Meow_MGL_Rest
 				'description' => $description,
 				'layout' => $layout,
 				'medias' => serialize( $medias ),
+				'lead_image_id' => $lead_image_id,
 				'is_post_mode' => $is_post_mode ? 1 : 0,
 				'is_hero_mode' => $is_hero_mode ? 1 : 0,
 				'posts' => $posts ? serialize( $posts ) : null,
@@ -562,6 +575,66 @@ class Meow_MGL_Rest
 			'success' => true,
 			'data' => $this->core->get_gallery_images( json_decode( $image_ids, true ), json_decode( $atts, true ), $layout, $size )
 		], 200 );
+	}
+
+	function rest_fetch_posts( $request ) {
+		try {
+			$params = $request->get_json_params();
+			$search = isset($params['search']) ? $params['search'] : '';
+			$offset = isset($params['offset']) ? intval($params['offset']) : 0;
+			$limit = isset($params['limit']) ? intval($params['limit']) : 10;
+
+			global $wpdb;
+			$searchPlaceholder = $search ? '%' . $search . '%' : '';
+			$where_search_clause = $search ? $wpdb->prepare(
+				"AND ( p.post_title LIKE %s OR p.post_content LIKE %s OR p.post_name LIKE %s ) ",
+				$searchPlaceholder,
+				$searchPlaceholder,
+				$searchPlaceholder
+			) : '';
+
+			$posts = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT p.ID, p.post_title, p.post_date, p.post_status, u.display_name as author
+					FROM $wpdb->posts p 
+					LEFT JOIN $wpdb->users u ON p.post_author = u.ID
+					WHERE p.post_type = 'post' 
+					AND p.post_status IN ('publish', 'draft', 'private')
+					$where_search_clause 
+					ORDER BY p.post_date DESC 
+					LIMIT %d, %d", 
+					$offset, 
+					$limit
+				), 
+				OBJECT
+			);
+
+			$posts_count = (int)$wpdb->get_var(
+				"SELECT COUNT(*)
+				FROM $wpdb->posts p 
+				WHERE p.post_type = 'post' 
+				AND p.post_status IN ('publish', 'draft', 'private')
+				$where_search_clause"
+			);
+
+			$data = array_map(function($post) {
+				return [
+					'id' => $post->ID,
+					'title' => $post->post_title,
+					'date' => $post->post_date,
+					'author' => $post->author,
+					'status' => $post->post_status
+				];
+			}, $posts);
+
+			return new WP_REST_Response([
+				'success' => true,
+				'data' => $data,
+				'total' => $posts_count
+			], 200);
+		} catch (Exception $e) {
+			return new WP_REST_Response(['success' => false, 'message' => $e->getMessage()], 500);
+		}
 	}
 
 }

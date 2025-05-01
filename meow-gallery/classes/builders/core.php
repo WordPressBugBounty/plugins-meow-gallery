@@ -31,7 +31,7 @@ abstract class Meow_MGL_Builders_Core {
 		$this->infinite = $infinite;
 		$this->atts = $atts;
 		$this->customClass = isset( $atts['custom-class'] ) ? $atts['custom-class'] : null;
-		$this->link = isset( $atts['link'] ) ? $atts['link'] : null;
+		$this->link = isset( $atts['link'] ) ? $atts['link'] : ( $options['link'] ?? null );
 		$this->align = isset( $atts['align'] ) ? $atts['align'] : $this->align;
 		$this->isPreview = $isPreview;
 		$this->class_id = 'mgl-gallery-' . $this->id;

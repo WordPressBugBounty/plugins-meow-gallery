@@ -1,7 +1,7 @@
 <?php
 
 class Meow_MGL_Migrations {
-    private $db_version = '1.0';
+    private $db_version = '1.4';
     private $core;
 
     public function __construct( $core ) {
@@ -32,6 +32,7 @@ class Meow_MGL_Migrations {
             description text,
             layout varchar( 50 ) NOT NULL,
             medias longtext,
+            lead_image_id varchar( 20 ) DEFAULT NULL,
             is_post_mode tinyint( 1 ) DEFAULT 0,
             is_hero_mode tinyint( 1 ) DEFAULT 0,
             posts longtext,
@@ -58,6 +59,20 @@ class Meow_MGL_Migrations {
         ) $charset_collate;";
 
         dbDelta( $sql );
+        
+
+        // TODO: Delete September 2025
+        // Check if lead_image_id column exists in collections table and add if not
+        $collections_table = $wpdb->prefix . 'mgl_collections';
+        $column_exists = $wpdb->get_results( $wpdb->prepare(
+            "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = 'lead_image_id'",
+            DB_NAME,
+            $collections_table
+        ) );
+        
+        if ( empty( $column_exists ) ) {
+            $wpdb->query( "ALTER TABLE $collections_table ADD COLUMN lead_image_id varchar(20) DEFAULT NULL" );
+        }
 
         // Migrate existing data from options to tables
         if ( version_compare( $current_version, '1.0', '<' ) ) {
@@ -85,6 +100,7 @@ class Meow_MGL_Migrations {
                     'description' => $shortcode['description'] ?? '',
                     'layout' => $shortcode['layout'],
                     'medias' => serialize( $shortcode['medias'] ),
+                    'lead_image_id' => $shortcode['lead_image_id'] ?? null,
                     'is_post_mode' => ( isset( $shortcode['is_post_mode'] ) && $shortcode['is_post_mode'] ) ? 1 : 0,
                     'is_hero_mode' => isset( $shortcode['hero'] ) && $shortcode['hero'] ? 1 : 0,
                     'posts' => isset( $shortcode['posts'] ) ? serialize( $shortcode['posts'] ) : null,

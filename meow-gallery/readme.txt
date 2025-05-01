@@ -2,9 +2,9 @@
 Contributors: TigrouMeow
 Tags: gallery, masonry, image, block, lightroom
 Requires at least: 6.0
-Tested up to: 6.7
+Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 5.2.7
+Stable tag: 5.2.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,6 +49,20 @@ You can find more information on this plugin on [Meow Apps: Meow Gallery](https:
 Languages: English.
 
 == Changelog ==
+
+= 5.2.8 (2025/05/01) =
+* Fix: Corrected post selector search and allowed saving without selected posts.
+* Fix: Resolved a render loop issue and improved gallery rendering stability.
+* Fix: Updated SQL query in get_gallery_by_id to use a proper string placeholder.
+* Update: Refactored CollectionThumbnails, updated styles and dimensions in ShortcodeMaker, and improved unique ID generation.
+* Update: Refined UI by updating the back button SVG and commenting out the loading spinner.
+* Add: Introduced lead image selection feature for Collections.
+* Update: Replaced generate_uniqid with wp_unique_id and added unique constraints in the database.
+* Fix: Sanitized captions to prevent XSS vulnerabilities.
+* Update: Replaced NekoInput with PostSelector in the manager for better post selection.
+* Fix: Removed incompatible PHP 8 syntax in get_collection_by_id.
+* Add: Added a default link option setting.
+* Update: Ensured gallery layout respects block settings overrides.
 
 = 5.2.7 (2025/03/13) =
 * Update: Reworked the Block to support Manager shortcodes for better integration.

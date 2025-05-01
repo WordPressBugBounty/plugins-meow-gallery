@@ -44,7 +44,12 @@
 	</div>
 	<?php if ( !empty( $caption ) ): ?>
 	<figcaption class="mgl-caption">
-			<p><?php echo wp_kses_post( $caption ) ?></p>
+		<p><?php echo wp_kses($caption, [
+			'strong' => [], // Bold
+			'b' => [],      // Bold alternative
+			'em' => [],     // Italic
+			'i' => []       // Italic alternative
+		]) ?></p>
 	</figcaption>
 	<?php endif; ?>
 </figure>

@@ -133,13 +133,14 @@ class Meow_MGL_Core {
 			}
 
 			$image_ids = $shortcode['medias']['thumbnail_ids'];
+			unset( $shortcode['medias'] );
 
 			if ( isset( $shortcode['layout'] ) ) {
 				$layout = $shortcode['layout'];
+				unset( $shortcode['layout'] );
 			}
 
 			$atts = array_merge( $atts, $shortcode );
-			unset( $atts['medias'] );
 		}
 
 		if ( isset( $atts['ids'] ) ) {
@@ -225,7 +226,6 @@ class Meow_MGL_Core {
 		}
 
 		// Layout
-		
 		if ( isset( $atts['layout'] ) && $atts['layout'] != 'default' ) {
 			$layout = $atts['layout'];
 		}
@@ -362,7 +362,7 @@ class Meow_MGL_Core {
 		$size = isset( $atts['size'] ) ? $atts['size'] : 'large';
 		$size =  apply_filters( 'mgl_media_size', $size );
 		$custom_class = isset( $atts['custom-class'] ) ? $atts['custom-class'] : null;
-		$link = isset( $atts['link'] ) ? $atts['link'] : null;
+		$link = isset( $atts['link'] ) ? $atts['link'] : ( $options['link'] ?? null );
 		$updir = trailingslashit( $wp_upload_dir['baseurl'] );
 		$captions = isset( $atts['captions'] ) ? $atts['captions'] : ( $options['captions'] ?? 'none' );
 		$animation = null;
@@ -513,6 +513,7 @@ class Meow_MGL_Core {
 		return array(
 			'layout' => 'tiles',
 			'captions' => 'none',
+			'link' => null,
 			'captions_alignment' => 'center',
 			'captions_background' => 'fade-black',
 			'animation' => false,
@@ -649,12 +650,21 @@ class Meow_MGL_Core {
 				];
 			}
 			
-			$link_attr = $this->get_link_attributes( $id, $atts['link'] ?? null, $image );
+			$default_link = $this->get_option( 'link', null );
+			$link_attr = $this->get_link_attributes( $id, $atts['link'] ?? $default_link, $image );
 			$no_lightbox = $link_attr['type'] === 'link';
 
 			$mergedArray = [
 				'id' => $id,
-				'caption' => wp_kses_post( apply_filters( 'mgl_caption', $image['caption'], $id ) ),
+				'caption' => wp_kses( 
+					html_entity_decode(apply_filters( 'mgl_caption', $image['caption'], $id ), ENT_QUOTES), 
+					[
+						'strong' => [], // Bold
+						'b' => [],      // Bold alternative
+						'em' => [],     // Italic
+						'i' => []       // Italic alternative
+					]
+				),
 				'img_html' => apply_filters( 'mgl_gallery_written', 
 					$this->get_img_html( $id, $size, $layout, $atts, $image, $no_lightbox ),
 					$layout
@@ -815,7 +825,8 @@ class Meow_MGL_Core {
 		$map_images = array_map( function ( $id ) use ( $images, $atts ) {
 
 			$image = $images[$id];
-			$link_attr = $this->get_link_attributes( $id, $atts['link'] ?? null, $image );
+			$default_link = $this->get_option( 'link', null );
+			$link_attr = $this->get_link_attributes( $id, $atts['link'] ?? $default_link, $image );
 
 			$geo_coordinates = MeowPro_MGL_Exif::get_gps_data( $id, $image['meta'] );
 			if ( empty( $geo_coordinates ) ) {
@@ -858,24 +869,33 @@ class Meow_MGL_Core {
 		return esc_attr( htmlspecialchars( wp_json_encode( $data ), ENT_QUOTES, 'UTF-8' ) );
 	}
 
-	public function generate_uniqid( $length = 13 ) {
-		if ( function_exists( "random_bytes" ) ) {
-			$bytes = random_bytes( ceil( $length / 2 ) );
-		}
-		elseif ( function_exists( "openssl_random_pseudo_bytes" ) ) {
-			$bytes = openssl_random_pseudo_bytes( ceil( $length / 2 ) );
-		}
+	public function generate_uniqid($length = 13) {
+		// Use WordPress function
+		if ( function_exists( 'wp_unique_id' ) ) {
+			$prefix = uniqid();
+			return wp_unique_id( $prefix );
+		} 
+		// Fall back 
 		else {
-			throw new Exception( "No cryptographically secure random function available." );
+			if ( function_exists( "random_bytes" ) ) {
+				$bytes = random_bytes( ceil( $length / 2 ) );
+			}
+			elseif ( function_exists( "openssl_random_pseudo_bytes" ) ) {
+				$bytes = openssl_random_pseudo_bytes(ceil($length / 2));
+			}
+			else {
+				throw new Exception( "No cryptographically secure random function available." );
+			}
+			return substr( bin2hex( $bytes ), 0, $length );
 		}
-		return substr( bin2hex( $bytes ), 0, $length );
 	}
 
 
 	public function get_gallery_by_id( $id ) {
 		global $wpdb;
 		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
-		$gallery = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $shortcodes_table WHERE id = %d", $id ), ARRAY_A );
+		$gallery = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $shortcodes_table WHERE id = %s", $id ), ARRAY_A );
+
 		if ( !$gallery ) {
 			throw new Exception( __( 'Gallery not found.', MGL_DOMAIN ));
 		}
@@ -898,6 +918,7 @@ class Meow_MGL_Core {
 				'description' => $gallery['description'],
 				'layout' => $gallery['layout'],
 				'medias' => maybe_unserialize( $gallery['medias'] ),
+				'lead_image_id' => $gallery['lead_image_id'],
 				'is_post_mode' => ( bool )$gallery['is_post_mode'],
 				'hero' => ( bool )$gallery['is_hero_mode'],
 				'posts' => $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null,
@@ -940,6 +961,7 @@ class Meow_MGL_Core {
 				'description' => $gallery['description'],
 				'layout' => $gallery['layout'],
 				'medias' => maybe_unserialize( $gallery['medias'] ),
+				'lead_image_id' => $gallery['lead_image_id'],
 				'is_post_mode' => ( bool )$gallery['is_post_mode'],
 				'hero' => ( bool )$gallery['is_hero_mode'],
 				'posts' => $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null,
@@ -981,6 +1003,7 @@ class Meow_MGL_Core {
 					'description' => $gallery['description'],
 					'layout' => $gallery['layout'],
 					'medias' => unserialize( $gallery['medias'] ),
+					'lead_image_id' => $gallery['lead_image_id'],
 					'is_post_mode' => ( bool )$gallery['is_post_mode'],
 					'hero' => ( bool )$gallery['is_hero_mode'],
 					'posts' => $gallery['posts'] ? unserialize( $gallery['posts'] ) : null,
@@ -1040,6 +1063,7 @@ class Meow_MGL_Core {
 						'description' => $gallery['description'],
 						'layout' => $gallery['layout'],
 						'medias' => unserialize( $gallery['medias'] ),
+						'lead_image_id' => $gallery['lead_image_id'],
 						'is_post_mode' => ( bool )$gallery['is_post_mode'],
 						'hero' => ( bool )$gallery['is_hero_mode'],
 						'posts' => $gallery['posts'] ? unserialize( $gallery['posts'] ) : null,
