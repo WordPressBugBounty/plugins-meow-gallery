@@ -186,6 +186,7 @@ class Meow_MGL_Rest
 			$posts = $params['posts'];
 			$latest_posts = $params['latest_posts'];
 			$lead_image_id = $params['lead_image_id'];
+			$order_by = $params['order_by'];
 			$is_post_mode = $params['is_post_mode'];
 			$is_hero_mode = $params['is_hero_mode'];
 
@@ -230,6 +231,7 @@ class Meow_MGL_Rest
 				'layout' => $layout,
 				'medias' => serialize( $medias ),
 				'lead_image_id' => $lead_image_id,
+				'order_by' => $order_by,
 				'is_post_mode' => $is_post_mode ? 1 : 0,
 				'is_hero_mode' => $is_hero_mode ? 1 : 0,
 				'posts' => $posts ? serialize( $posts ) : null,

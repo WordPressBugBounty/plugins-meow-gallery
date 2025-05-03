@@ -10,7 +10,7 @@ class Meow_MGL_OrderBy {
 
 		// Check params
 		if ( $orderby === 'ids' ) {
-			$images = $order === 'asc' ? sort( $images ) : rsort( $images );
+			$order === 'asc' ? sort( $images ) : rsort( $images );
 		}
 		else if ( $orderby === 'title' ) {
 			$sqlOrderBy = $order === 'asc' ? ' ORDER BY p.post_title ASC' : ' ORDER BY p.post_title DESC';

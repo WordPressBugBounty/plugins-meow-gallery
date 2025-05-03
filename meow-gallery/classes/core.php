@@ -219,9 +219,20 @@ class Meow_MGL_Core {
 		}
 
 		// Ordering
-		if ( isset( $atts['orderby'] ) ) {
+		if ( isset( $atts['orderby'] ) || isset( $atts['order_by'] ) ) {
+			
+			if ( isset( $atts['orderby'] ) ) {
+				$orderby = $atts['orderby'];
+				$order   = isset( $atts['order'] ) ? $atts['order'] : 'asc';
+			}
+
+			if ( isset( $atts['order_by'] ) ) {
+				$orderby = explode( '-', $atts['order_by'] )[0];
+				$order   = explode( '-', $atts['order_by'] )[1];
+			}
+
 			$image_ids = explode( ',', $image_ids );
-			$image_ids = Meow_MGL_OrderBy::run( $image_ids, $atts['orderby'], isset( $atts['order'] ) ? $atts['order'] : 'asc' );
+			$image_ids = Meow_MGL_OrderBy::run( $image_ids, $orderby, $order );
 			$image_ids = implode( ',', $image_ids );
 		}
 
@@ -919,6 +930,7 @@ class Meow_MGL_Core {
 				'layout' => $gallery['layout'],
 				'medias' => maybe_unserialize( $gallery['medias'] ),
 				'lead_image_id' => $gallery['lead_image_id'],
+				'order_by' => $gallery['order_by'],
 				'is_post_mode' => ( bool )$gallery['is_post_mode'],
 				'hero' => ( bool )$gallery['is_hero_mode'],
 				'posts' => $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null,
@@ -962,6 +974,7 @@ class Meow_MGL_Core {
 				'layout' => $gallery['layout'],
 				'medias' => maybe_unserialize( $gallery['medias'] ),
 				'lead_image_id' => $gallery['lead_image_id'],
+				'order_by' => $gallery['order_by'],
 				'is_post_mode' => ( bool )$gallery['is_post_mode'],
 				'hero' => ( bool )$gallery['is_hero_mode'],
 				'posts' => $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null,
@@ -1004,6 +1017,7 @@ class Meow_MGL_Core {
 					'layout' => $gallery['layout'],
 					'medias' => unserialize( $gallery['medias'] ),
 					'lead_image_id' => $gallery['lead_image_id'],
+					'order_by' => $gallery['order_by'],
 					'is_post_mode' => ( bool )$gallery['is_post_mode'],
 					'hero' => ( bool )$gallery['is_hero_mode'],
 					'posts' => $gallery['posts'] ? unserialize( $gallery['posts'] ) : null,
@@ -1064,6 +1078,7 @@ class Meow_MGL_Core {
 						'layout' => $gallery['layout'],
 						'medias' => unserialize( $gallery['medias'] ),
 						'lead_image_id' => $gallery['lead_image_id'],
+						'order_by' => $gallery['order_by'],
 						'is_post_mode' => ( bool )$gallery['is_post_mode'],
 						'hero' => ( bool )$gallery['is_hero_mode'],
 						'posts' => $gallery['posts'] ? unserialize( $gallery['posts'] ) : null,
