@@ -333,7 +333,13 @@ class Meow_MGL_Core {
 		
 		//The Gallery Container is where the images in the right layout will be rendered.
 		$html .= '<div class="mgl-gallery-container"></div>';
-
+		
+		// Add skeleton loading placeholder to prevent layout shift
+		$skeleton_loading = $this->get_option( 'skeleton_loading', true );
+		if ( $skeleton_loading ) {
+			$html .= $this->get_gallery_skeleton( $layout, $gallery_options );
+		}
+		
 		// Use the DOM to generate the images (so that lightboxes can hook into them, and for better SEO)
 		// If there are no images, the JS will look for the img_html and build the gallery from there.
 		// TODO: We should check why it's not working with the carousel (for map, it's normal).
@@ -441,11 +447,13 @@ class Meow_MGL_Core {
 		$carousel_arrow_nav_enabled = $options['carousel_arrow_nav_enabled'];
 		$carousel_dot_nav_enabled = $options['carousel_dot_nav_enabled'];
 		$carousel_image_height = $options['carousel_image_height'];
+		$carousel_keep_aspect_ratio = $options['carousel_aspect_ratio'] ?? false;
 		if ( $layout === 'carousel' ) {
 			$carousel_gutter = $atts['gutter'] ?? $options['carousel_gutter'];
 			$carousel_arrow_nav_enabled = $atts['arrow_nav_enabled'] ?? $options['carousel_arrow_nav_enabled'];
 			$carousel_dot_nav_enabled = $atts['dot_nav_enabled'] ?? $options['carousel_dot_nav_enabled'];
 			$carousel_image_height = $atts['image_height'] ?? $options['carousel_image_height'];
+			$carousel_keep_aspect_ratio = $atts['keep-aspect-ratio'] === '1';
 		}
 		// Map
 		$map_gutter = $options['map_gutter'];
@@ -489,6 +497,7 @@ class Meow_MGL_Core {
 			'carousel_arrow_nav_enabled',
 			'carousel_dot_nav_enabled',
 			'carousel_image_height',
+			'carousel_keep_aspect_ratio',
 			'map_gutter',
 			'map_height',
 		);
@@ -565,7 +574,7 @@ class Meow_MGL_Core {
 			'maptiler_token' => '',
 			'right_click' => false,
 			'gallery_shortcode_override_disabled' => false,
-
+			'skeleton_loading' => true,
 		);
 	}
 
@@ -853,6 +862,7 @@ class Meow_MGL_Core {
 				[
 					'id' => $id,
 					'file' => $image['meta']['file'],
+					'file_full' => wp_get_attachment_url( $id ),
 					'file_srcset' => wp_get_attachment_image_srcset( $id, 'full' ),
 					'file_sizes' => wp_get_attachment_image_sizes( $id, 'full' ),
 					'dimension' => [
@@ -941,7 +951,7 @@ class Meow_MGL_Core {
 		return $galleries;
 	}
 
-	public function get_galleries( $offset = 0, $limit = 10, $order = 'DESC' ) {
+	public function get_galleries( $offset = 0, $limit = 10, $order = 'DESC', $page = 1 ) {
 		global $wpdb;
 		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
 		
@@ -956,6 +966,10 @@ class Meow_MGL_Core {
 		// Use the new table
 		// Get total count
 		$total = $wpdb->get_var( "SELECT COUNT( * ) FROM $shortcodes_table" );
+		// Calculate offset based on page if provided
+		if ($page > 1 && $offset === 0) {
+			$offset = ($page - 1) * $limit;
+		}
 		
 		// Get shortcodes with pagination and sorting
 		$query = $wpdb->prepare(
@@ -1033,7 +1047,7 @@ class Meow_MGL_Core {
 		return $collection;
 	}
 
-	public function get_collections( $offset = 0, $limit = 10, $order = 'DESC' ) {
+	public function get_collections( $offset = 0, $limit = 10, $order = 'DESC', $page = 1 ) {
 		global $wpdb;
 		$collections_table = $wpdb->prefix . 'mgl_collections';
 		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
@@ -1048,6 +1062,10 @@ class Meow_MGL_Core {
 		
 		// Get total count
 		$total = $wpdb->get_var( "SELECT COUNT( * ) FROM $collections_table" );
+		// Calculate offset based on page if provided
+		if ($page > 1 && $offset === 0) {
+			$offset = ($page - 1) * $limit;
+		}
 		
 		// Get collections with pagination and sorting
 		$query = $wpdb->prepare(
@@ -1104,6 +1122,169 @@ class Meow_MGL_Core {
 			'total' => $total,
 			'collections' => $result
 		];
+	}
+
+	public function get_gallery_skeleton( $layout, $gallery_options ) {
+		$skeleton_rows = 3; // Default number of skeleton rows
+		$gutter = $gallery_options['tiles_gutter'] ?? 10;
+		
+		$skeleton_html = '<div class="mgl-gallery-skeleton" style="opacity: 1;">';
+		
+		switch ( $layout ) {
+			case 'tiles':
+				$skeleton_html .= $this->get_tiles_skeleton( $skeleton_rows, $gutter );
+				break;
+			case 'masonry':
+				$skeleton_html .= $this->get_masonry_skeleton( $gallery_options );
+				break;
+			case 'square':
+				$skeleton_html .= $this->get_square_skeleton( $gallery_options );
+				break;
+			case 'justified':
+				$skeleton_html .= $this->get_justified_skeleton( $skeleton_rows, $gutter );
+				break;
+			case 'cascade':
+				$skeleton_html .= $this->get_cascade_skeleton( $skeleton_rows, $gutter );
+				break;
+			case 'horizontal':
+			case 'carousel':
+				$skeleton_html .= $this->get_horizontal_skeleton( $gallery_options );
+				break;
+			case 'map':
+				$skeleton_html .= $this->get_map_skeleton( $gallery_options );
+				break;
+			default:
+				$skeleton_html .= $this->get_tiles_skeleton( $skeleton_rows, $gutter );
+		}
+		
+		$skeleton_html .= '</div>';
+		
+		return $skeleton_html;
+	}
+
+	private function get_tiles_skeleton( $rows = 3, $gutter = 10 ) {
+		$patterns = ['oo', 'oio', 'ooo', 'oi', 'o'];
+		$html = '';
+		
+		for ( $i = 0; $i < $rows; $i++ ) {
+			$pattern = $patterns[$i % count($patterns)];
+			$html .= '<div class="mgl-skeleton-row" style="display: flex; margin-bottom: 10px;">';
+			
+			$chars = str_split( $pattern );
+			foreach ( $chars as $j => $orientation ) {
+				$aspect_ratio = $orientation === 'o' ? '3/2' : '2/3';
+				$html .= '<div class="mgl-skeleton-box" style="flex: 1; padding: ' . ($gutter / 2) . 'px;">';
+				$html .= '<div class="mgl-skeleton-item" style="aspect-ratio: ' . $aspect_ratio . '; background-color: #e2e2e2; border-radius: 4px; overflow: hidden; position: relative;">';
+				$html .= '<div class="mgl-skeleton-shimmer"></div>';
+				$html .= '</div></div>';
+			}
+			
+			$html .= '</div>';
+		}
+		
+		return $html;
+	}
+
+	private function get_masonry_skeleton( $options ) {
+		$columns = $options['masonry_columns'] ?? 3;
+		$gutter = $options['masonry_gutter'] ?? 5;
+		$items = 6;
+		
+		$html = '<div class="mgl-skeleton-masonry" style="column-count: ' . $columns . '; margin: ' . (-$gutter / 2) . 'px;">';
+		
+		for ( $i = 0; $i < $items; $i++ ) {
+			$height = 200 + ($i % 3) * 100;
+			$html .= '<div class="mgl-skeleton-item" style="height: ' . $height . 'px; padding: ' . ($gutter / 2) . 'px; break-inside: avoid; display: block; margin-bottom: 0; background-color: #e2e2e2; border-radius: 4px; overflow: hidden; position: relative;">';
+			$html .= '<div class="mgl-skeleton-shimmer"></div>';
+			$html .= '</div>';
+		}
+		
+		$html .= '</div>';
+		return $html;
+	}
+
+	private function get_square_skeleton( $options ) {
+		$columns = $options['square_columns'] ?? 5;
+		$gutter = $options['square_gutter'] ?? 5;
+		$rows = 2;
+		$total_items = $rows * $columns;
+		
+		$html = '<div class="mgl-skeleton-square" style="margin: ' . (-$gutter / 2) . 'px; display: flex; flex-wrap: wrap;">';
+		
+		for ( $i = 0; $i < $total_items; $i++ ) {
+			$html .= '<div class="mgl-skeleton-item" style="width: calc(100% / ' . $columns . '); padding-bottom: calc(100% / ' . $columns . '); position: relative; background-color: #e2e2e2; border-radius: 4px; overflow: hidden;">';
+			$html .= '<div class="mgl-skeleton-shimmer"></div>';
+			$html .= '</div>';
+		}
+		
+		$html .= '</div>';
+		return $html;
+	}
+
+	private function get_justified_skeleton( $rows = 3, $gutter = 5 ) {
+		$html = '<div class="mgl-skeleton-justified" style="margin: ' . (-$gutter / 2) . 'px;">';
+		
+		for ( $i = 0; $i < $rows; $i++ ) {
+			$items_per_row = 3 + ($i % 2);
+			$html .= '<div style="display: flex; margin-bottom: ' . $gutter . 'px; height: 200px;">';
+			
+			for ( $j = 0; $j < $items_per_row; $j++ ) {
+				$html .= '<div class="mgl-skeleton-item" style="flex: 1; margin: ' . ($gutter / 2) . 'px; height: 100%; background-color: #e2e2e2; border-radius: 4px; overflow: hidden; position: relative;">';
+				$html .= '<div class="mgl-skeleton-shimmer"></div>';
+				$html .= '</div>';
+			}
+			
+			$html .= '</div>';
+		}
+		
+		$html .= '</div>';
+		return $html;
+	}
+
+	private function get_cascade_skeleton( $rows = 6, $gutter = 10 ) {
+		$html = '<div class="mgl-skeleton-cascade" style="margin: ' . (-$gutter / 2) . 'px;">';
+		
+		for ( $i = 0; $i < $rows; $i++ ) {
+			$width = ($i % 2 === 0) ? '60%' : '40%';
+			$height = 150 + ($i % 4) * 50;
+			$margin_left = ($i % 2 === 0) ? '0' : 'auto';
+			
+			$html .= '<div style="padding: ' . ($gutter / 2) . 'px;">';
+			$html .= '<div class="mgl-skeleton-item" style="height: ' . $height . 'px; width: ' . $width . '; margin-left: ' . $margin_left . '; background-color: #e2e2e2; border-radius: 4px; overflow: hidden; position: relative;">';
+			$html .= '<div class="mgl-skeleton-shimmer"></div>';
+			$html .= '</div></div>';
+		}
+		
+		$html .= '</div>';
+		return $html;
+	}
+
+	private function get_horizontal_skeleton( $options ) {
+		$image_height = $options['horizontal_image_height'] ?? $options['carousel_image_height'] ?? 500;
+		$gutter = $options['horizontal_gutter'] ?? $options['carousel_gutter'] ?? 5;
+		
+		$html = '<div class="mgl-skeleton-horizontal" style="min-height: ' . $image_height . 'px;">';
+		$html .= '<div style="display: flex; height: ' . $image_height . 'px; overflow: hidden;">';
+		
+		for ( $i = 0; $i < 8; $i++ ) {
+			$width = $image_height * (0.7 + ($i % 3) * 0.3);
+			$html .= '<div class="mgl-skeleton-item" style="height: 100%; width: ' . $width . 'px; flex-shrink: 0; padding: 0 ' . ($gutter / 2) . 'px; background-color: #e2e2e2; border-radius: 4px; overflow: hidden; position: relative;">';
+			$html .= '<div class="mgl-skeleton-shimmer"></div>';
+			$html .= '</div>';
+		}
+		
+		$html .= '</div></div>';
+		return $html;
+	}
+
+	private function get_map_skeleton( $options ) {
+		$height = $options['map_height'] ?? 400;
+		
+		$html = '<div class="mgl-skeleton-map" style="height: ' . $height . 'px; background-color: #f0f0f0; display: flex; align-items: center; justify-content: center; position: relative; border-radius: 4px; overflow: hidden;">';
+		$html .= '<div class="mgl-skeleton-shimmer"></div>';
+		$html .= '</div>';
+		
+		return $html;
 	}
 }
 

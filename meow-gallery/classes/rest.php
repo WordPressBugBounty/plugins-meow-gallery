@@ -420,10 +420,11 @@ class Meow_MGL_Rest
 
 			$offset = isset( $params['offset'] ) ? $params['offset'] : 0;
 			$limit = isset( $params['limit'] ) ? $params['limit'] : 10;
+			$page = isset( $params['page'] ) ? $params['page'] : 1;
 			$sort_updated = $params['sort']['by']; // desc, asc
 			$order = $sort_updated === 'desc' ? 'DESC' : 'ASC';
 			
-			$res = $this->core->get_galleries( $offset, $limit, $order );
+			$res = $this->core->get_galleries( $offset, $limit, $order, $page );
 			$shortcodes = $res['galleries'];
 			$total = $res['total'];
 			

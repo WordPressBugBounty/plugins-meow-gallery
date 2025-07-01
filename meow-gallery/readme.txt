@@ -4,7 +4,7 @@ Tags: gallery, masonry, image, block, lightroom
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 5.3.1
+Stable tag: 5.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,6 +49,13 @@ You can find more information on this plugin on [Meow Apps: Meow Gallery](https:
 Languages: English.
 
 == Changelog ==
+
+= 5.3.2 (2025/07/01) =
+* Add: Carousel 'Keep Aspect Ratio' now available as a Block and Shortcode attribute.
+* Add: Skeleton loading option added for gallery layouts and enabled by default to reduce CLS.
+* Fix: Improved pagination in Collections Manager.
+* Fix: Improved pagination in Galleries Manager.
+* Update: Collections now use the original image for map pin display if no other size is available.
 
 = 5.3.1 (2025/05/06) =
 * Fix: Corrected table display issues for Collections.
