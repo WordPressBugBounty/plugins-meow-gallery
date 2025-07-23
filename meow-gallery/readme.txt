@@ -4,7 +4,7 @@ Tags: gallery, masonry, image, block, lightroom
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 5.3.2
+Stable tag: 5.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,6 +49,11 @@ You can find more information on this plugin on [Meow Apps: Meow Gallery](https:
 Languages: English.
 
 == Changelog ==
+
+= 5.3.3 (2025/07/23) =
+* Add: Missing Leaflet images to improve content completeness.  
+* Fix: Empty rows in collections Bento for a cleaner appearance.  
+* Fix: Warning messages resolved to enhance stability.
 
 = 5.3.2 (2025/07/01) =
 * Add: Carousel 'Keep Aspect Ratio' now available as a Block and Shortcode attribute.

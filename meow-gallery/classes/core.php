@@ -453,7 +453,7 @@ class Meow_MGL_Core {
 			$carousel_arrow_nav_enabled = $atts['arrow_nav_enabled'] ?? $options['carousel_arrow_nav_enabled'];
 			$carousel_dot_nav_enabled = $atts['dot_nav_enabled'] ?? $options['carousel_dot_nav_enabled'];
 			$carousel_image_height = $atts['image_height'] ?? $options['carousel_image_height'];
-			$carousel_keep_aspect_ratio = $atts['keep-aspect-ratio'] === '1';
+			$carousel_keep_aspect_ratio = array_key_exists( 'keep-aspect-ratio', $atts ) ? $atts['keep-aspect-ratio'] : 1;
 		}
 		// Map
 		$map_gutter = $options['map_gutter'];
