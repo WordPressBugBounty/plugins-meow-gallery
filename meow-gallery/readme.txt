@@ -4,7 +4,7 @@ Tags: gallery, masonry, image, block, lightroom
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 5.3.3
+Stable tag: 5.3.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,6 +49,11 @@ You can find more information on this plugin on [Meow Apps: Meow Gallery](https:
 Languages: English.
 
 == Changelog ==
+
+= 5.3.4 (2025/08/16) =
+* Add: Introduced a global $wpmgl variable (JS API).
+* Fix: Corrected ALT Text for images with non-srcset sizes.
+* Update: UI improvements.
 
 = 5.3.3 (2025/07/23) =
 * Add: Missing Leaflet images to improve content completeness.  

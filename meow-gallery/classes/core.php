@@ -5,6 +5,7 @@ class Meow_MGL_Core {
 	private $gallery_process = false;
 	private $gallery_layout = 'tiles';
 	private $is_gallery_used = true; // TODO: Would be nice to detect if the gallery is actually used on the current page.
+	private $skeleton_handler;
 	
 	private static $plugin_option_name = 'mgl_options';
 	private $option_name = 'mgl_options';
@@ -22,6 +23,10 @@ class Meow_MGL_Core {
 	public function __construct() {
 		load_plugin_textdomain( MGL_DOMAIN, false, MGL_PATH . '/languages' );
 
+		// Initialize skeleton handler
+		require_once( MGL_PATH . '/classes/skeleton.php' );
+		$this->skeleton_handler = new Meow_MGL_Skeleton();
+
 		// Initializes the classes needed
 		MeowCommon_Helpers::is_rest() && new Meow_MGL_Rest( $this );
 
@@ -34,7 +39,13 @@ class Meow_MGL_Core {
 		}
 
 		// Load the Pro version *after* loading the Run class due to the JS file was gatherd into one file.
-		class_exists( 'MeowPro_MGL_Core' ) && new MeowPro_MGL_Core( $this );
+
+		$pro_module = class_exists( 'MeowPro_MGL_Core' );
+		if ( $pro_module ) {
+			new MeowPro_MGL_Core( $this );
+		} else {
+			add_shortcode( 'meow-collection', array( $this, 'collection' ) );
+		}
 
 		// Initialize the Admin if needed
 		add_action( 'init', array( $this, 'init' ) );
@@ -42,6 +53,13 @@ class Meow_MGL_Core {
 
 	function init() {
 		is_admin() && new Meow_MGL_Admin( $this );
+
+		global $wpmgl;
+		$wpmgl = $this;
+	}
+
+	function collection() {
+		return "<b>Meow Collection</b>: This is only available in the Pro version. Please <a href='https://meowapps.com/products/meow-gallery-pro/'>upgrade to Meow Gallery Pro</a> to use this feature.";
 	}
 
 	public function can_access_settings() {
@@ -337,7 +355,7 @@ class Meow_MGL_Core {
 		// Add skeleton loading placeholder to prevent layout shift
 		$skeleton_loading = $this->get_option( 'skeleton_loading', true );
 		if ( $skeleton_loading ) {
-			$html .= $this->get_gallery_skeleton( $layout, $gallery_options );
+			$html .= $this->skeleton_handler->get_skeleton_html( $layout, $gallery_options );
 		}
 		
 		// Use the DOM to generate the images (so that lightboxes can hook into them, and for better SEO)
@@ -743,7 +761,9 @@ class Meow_MGL_Core {
 		}
 		else {
 			$info = wp_get_attachment_image_src( $id, $image_size );
-			$img_html = '<img loading="lazy" src="' . $info[0] . '" class="' . $this->get_image_class( $id, $layout, $noLightbox ) . '" />';
+			$alt_text = get_post_meta( $id, '_wp_attachment_image_alt', true );
+			
+			$img_html = '<img loading="lazy" src="' . $info[0] . '" class="' . $this->get_image_class( $id, $layout, $noLightbox ) . '" alt="' . esc_attr( $alt_text ) . '" />';
 		}
 
 		if ( $layout === 'masonry' ) {
@@ -1124,168 +1144,6 @@ class Meow_MGL_Core {
 		];
 	}
 
-	public function get_gallery_skeleton( $layout, $gallery_options ) {
-		$skeleton_rows = 3; // Default number of skeleton rows
-		$gutter = $gallery_options['tiles_gutter'] ?? 10;
-		
-		$skeleton_html = '<div class="mgl-gallery-skeleton" style="opacity: 1;">';
-		
-		switch ( $layout ) {
-			case 'tiles':
-				$skeleton_html .= $this->get_tiles_skeleton( $skeleton_rows, $gutter );
-				break;
-			case 'masonry':
-				$skeleton_html .= $this->get_masonry_skeleton( $gallery_options );
-				break;
-			case 'square':
-				$skeleton_html .= $this->get_square_skeleton( $gallery_options );
-				break;
-			case 'justified':
-				$skeleton_html .= $this->get_justified_skeleton( $skeleton_rows, $gutter );
-				break;
-			case 'cascade':
-				$skeleton_html .= $this->get_cascade_skeleton( $skeleton_rows, $gutter );
-				break;
-			case 'horizontal':
-			case 'carousel':
-				$skeleton_html .= $this->get_horizontal_skeleton( $gallery_options );
-				break;
-			case 'map':
-				$skeleton_html .= $this->get_map_skeleton( $gallery_options );
-				break;
-			default:
-				$skeleton_html .= $this->get_tiles_skeleton( $skeleton_rows, $gutter );
-		}
-		
-		$skeleton_html .= '</div>';
-		
-		return $skeleton_html;
-	}
-
-	private function get_tiles_skeleton( $rows = 3, $gutter = 10 ) {
-		$patterns = ['oo', 'oio', 'ooo', 'oi', 'o'];
-		$html = '';
-		
-		for ( $i = 0; $i < $rows; $i++ ) {
-			$pattern = $patterns[$i % count($patterns)];
-			$html .= '<div class="mgl-skeleton-row" style="display: flex; margin-bottom: 10px;">';
-			
-			$chars = str_split( $pattern );
-			foreach ( $chars as $j => $orientation ) {
-				$aspect_ratio = $orientation === 'o' ? '3/2' : '2/3';
-				$html .= '<div class="mgl-skeleton-box" style="flex: 1; padding: ' . ($gutter / 2) . 'px;">';
-				$html .= '<div class="mgl-skeleton-item" style="aspect-ratio: ' . $aspect_ratio . '; background-color: #e2e2e2; border-radius: 4px; overflow: hidden; position: relative;">';
-				$html .= '<div class="mgl-skeleton-shimmer"></div>';
-				$html .= '</div></div>';
-			}
-			
-			$html .= '</div>';
-		}
-		
-		return $html;
-	}
-
-	private function get_masonry_skeleton( $options ) {
-		$columns = $options['masonry_columns'] ?? 3;
-		$gutter = $options['masonry_gutter'] ?? 5;
-		$items = 6;
-		
-		$html = '<div class="mgl-skeleton-masonry" style="column-count: ' . $columns . '; margin: ' . (-$gutter / 2) . 'px;">';
-		
-		for ( $i = 0; $i < $items; $i++ ) {
-			$height = 200 + ($i % 3) * 100;
-			$html .= '<div class="mgl-skeleton-item" style="height: ' . $height . 'px; padding: ' . ($gutter / 2) . 'px; break-inside: avoid; display: block; margin-bottom: 0; background-color: #e2e2e2; border-radius: 4px; overflow: hidden; position: relative;">';
-			$html .= '<div class="mgl-skeleton-shimmer"></div>';
-			$html .= '</div>';
-		}
-		
-		$html .= '</div>';
-		return $html;
-	}
-
-	private function get_square_skeleton( $options ) {
-		$columns = $options['square_columns'] ?? 5;
-		$gutter = $options['square_gutter'] ?? 5;
-		$rows = 2;
-		$total_items = $rows * $columns;
-		
-		$html = '<div class="mgl-skeleton-square" style="margin: ' . (-$gutter / 2) . 'px; display: flex; flex-wrap: wrap;">';
-		
-		for ( $i = 0; $i < $total_items; $i++ ) {
-			$html .= '<div class="mgl-skeleton-item" style="width: calc(100% / ' . $columns . '); padding-bottom: calc(100% / ' . $columns . '); position: relative; background-color: #e2e2e2; border-radius: 4px; overflow: hidden;">';
-			$html .= '<div class="mgl-skeleton-shimmer"></div>';
-			$html .= '</div>';
-		}
-		
-		$html .= '</div>';
-		return $html;
-	}
-
-	private function get_justified_skeleton( $rows = 3, $gutter = 5 ) {
-		$html = '<div class="mgl-skeleton-justified" style="margin: ' . (-$gutter / 2) . 'px;">';
-		
-		for ( $i = 0; $i < $rows; $i++ ) {
-			$items_per_row = 3 + ($i % 2);
-			$html .= '<div style="display: flex; margin-bottom: ' . $gutter . 'px; height: 200px;">';
-			
-			for ( $j = 0; $j < $items_per_row; $j++ ) {
-				$html .= '<div class="mgl-skeleton-item" style="flex: 1; margin: ' . ($gutter / 2) . 'px; height: 100%; background-color: #e2e2e2; border-radius: 4px; overflow: hidden; position: relative;">';
-				$html .= '<div class="mgl-skeleton-shimmer"></div>';
-				$html .= '</div>';
-			}
-			
-			$html .= '</div>';
-		}
-		
-		$html .= '</div>';
-		return $html;
-	}
-
-	private function get_cascade_skeleton( $rows = 6, $gutter = 10 ) {
-		$html = '<div class="mgl-skeleton-cascade" style="margin: ' . (-$gutter / 2) . 'px;">';
-		
-		for ( $i = 0; $i < $rows; $i++ ) {
-			$width = ($i % 2 === 0) ? '60%' : '40%';
-			$height = 150 + ($i % 4) * 50;
-			$margin_left = ($i % 2 === 0) ? '0' : 'auto';
-			
-			$html .= '<div style="padding: ' . ($gutter / 2) . 'px;">';
-			$html .= '<div class="mgl-skeleton-item" style="height: ' . $height . 'px; width: ' . $width . '; margin-left: ' . $margin_left . '; background-color: #e2e2e2; border-radius: 4px; overflow: hidden; position: relative;">';
-			$html .= '<div class="mgl-skeleton-shimmer"></div>';
-			$html .= '</div></div>';
-		}
-		
-		$html .= '</div>';
-		return $html;
-	}
-
-	private function get_horizontal_skeleton( $options ) {
-		$image_height = $options['horizontal_image_height'] ?? $options['carousel_image_height'] ?? 500;
-		$gutter = $options['horizontal_gutter'] ?? $options['carousel_gutter'] ?? 5;
-		
-		$html = '<div class="mgl-skeleton-horizontal" style="min-height: ' . $image_height . 'px;">';
-		$html .= '<div style="display: flex; height: ' . $image_height . 'px; overflow: hidden;">';
-		
-		for ( $i = 0; $i < 8; $i++ ) {
-			$width = $image_height * (0.7 + ($i % 3) * 0.3);
-			$html .= '<div class="mgl-skeleton-item" style="height: 100%; width: ' . $width . 'px; flex-shrink: 0; padding: 0 ' . ($gutter / 2) . 'px; background-color: #e2e2e2; border-radius: 4px; overflow: hidden; position: relative;">';
-			$html .= '<div class="mgl-skeleton-shimmer"></div>';
-			$html .= '</div>';
-		}
-		
-		$html .= '</div></div>';
-		return $html;
-	}
-
-	private function get_map_skeleton( $options ) {
-		$height = $options['map_height'] ?? 400;
-		
-		$html = '<div class="mgl-skeleton-map" style="height: ' . $height . 'px; background-color: #f0f0f0; display: flex; align-items: center; justify-content: center; position: relative; border-radius: 4px; overflow: hidden;">';
-		$html .= '<div class="mgl-skeleton-shimmer"></div>';
-		$html .= '</div>';
-		
-		return $html;
-	}
 }
 
 ?>
