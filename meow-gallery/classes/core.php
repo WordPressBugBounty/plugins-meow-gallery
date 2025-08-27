@@ -565,6 +565,11 @@ class Meow_MGL_Core {
 			'tiles_density' => 'high',
 			'tiles_density_tablet' => 'medium',
 			'tiles_density_mobile' => 'low',
+
+			'justified_density' => 'low',
+			'justified_density_tablet' => 'medium',
+			'justified_density_mobile' => 'low',
+
 			'masonry_gutter' => 5,
 			'masonry_columns' => 3,
 			'masonry_left_to_right' => false,
