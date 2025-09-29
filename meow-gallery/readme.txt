@@ -4,7 +4,7 @@ Tags: gallery, masonry, image, block, lightroom
 Requires at least: 6.0
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 5.3.5
+Stable tag: 5.3.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -49,6 +49,13 @@ You can find more information on this plugin on [Meow Apps: Meow Gallery](https:
 Languages: English.
 
 == Changelog ==
+
+= 5.3.6 (2025/09/29) =
+* Add: Retrieve thumbnail sizes for Map Markers.
+* Add: Breakpoint for Square layout to improve responsiveness on tablets.
+* Add: Search input feature for Galleries and Collections Manager.
+* Fix: Resolved an issue where gallery overlays interfered with editor content by integrating Skeleton for better stability.
+* Fix: Implemented MutationObserver to automatically rerender Lightbox when Map Layout finishes loading.
 
 = 5.3.5 (2025/08/27) =
 * Add: Density for Justified layout.

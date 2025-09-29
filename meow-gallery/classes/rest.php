@@ -356,9 +356,11 @@ class Meow_MGL_Rest
 			$offset = isset( $params['offset'] ) ? $params['offset'] : 0;
 			$limit = isset( $params['limit'] ) ? $params['limit'] : 10;
 			$sort_updated = $params['sort']['by']; // desc, asc
+			$page = isset( $params['page'] ) ? $params['page'] : 1;
 			$order = $sort_updated === 'desc' ? 'DESC' : 'ASC';
-			
-			$res = $this->core->get_collections( $offset, $limit, $order );
+			$search = isset( $params['search'] ) ? $params['search'] : '';
+
+			$res = $this->core->get_collections( $offset, $limit, $order, $page, $search );
 			$collections = $res['collections'];
 			$total = $res['total'];
 			
@@ -422,9 +424,10 @@ class Meow_MGL_Rest
 			$limit = isset( $params['limit'] ) ? $params['limit'] : 10;
 			$page = isset( $params['page'] ) ? $params['page'] : 1;
 			$sort_updated = $params['sort']['by']; // desc, asc
+			$search = isset( $params['search'] ) ? $params['search'] : '';
 			$order = $sort_updated === 'desc' ? 'DESC' : 'ASC';
-			
-			$res = $this->core->get_galleries( $offset, $limit, $order, $page );
+
+			$res = $this->core->get_galleries( $offset, $limit, $order, $page, $search );
 			$shortcodes = $res['galleries'];
 			$total = $res['total'];
 			

@@ -6,7 +6,8 @@ class Meow_MGL_Core {
 	private $gallery_layout = 'tiles';
 	private $is_gallery_used = true; // TODO: Would be nice to detect if the gallery is actually used on the current page.
 	private $skeleton_handler;
-	
+	private $pro_module = false;
+
 	private static $plugin_option_name = 'mgl_options';
 	private $option_name = 'mgl_options';
 	private $infinite_layouts = [
@@ -23,6 +24,7 @@ class Meow_MGL_Core {
 	public function __construct() {
 		load_plugin_textdomain( MGL_DOMAIN, false, MGL_PATH . '/languages' );
 
+		//TODO: Move Skeleton into PRO
 		// Initialize skeleton handler
 		require_once( MGL_PATH . '/classes/skeleton.php' );
 		$this->skeleton_handler = new Meow_MGL_Skeleton();
@@ -40,8 +42,8 @@ class Meow_MGL_Core {
 
 		// Load the Pro version *after* loading the Run class due to the JS file was gatherd into one file.
 
-		$pro_module = class_exists( 'MeowPro_MGL_Core' );
-		if ( $pro_module ) {
+		$this->pro_module = class_exists( 'MeowPro_MGL_Core' );
+		if ( $this->pro_module ) {
 			new MeowPro_MGL_Core( $this );
 		} else {
 			add_shortcode( 'meow-collection', array( $this, 'collection' ) );
@@ -355,7 +357,8 @@ class Meow_MGL_Core {
 		// Add skeleton loading placeholder to prevent layout shift
 		$skeleton_loading = $this->get_option( 'skeleton_loading', true );
 		if ( $skeleton_loading ) {
-			$html .= $this->skeleton_handler->get_skeleton_html( $layout, $gallery_options );
+			$image_count = count( $gallery_images );
+			$html .= $this->skeleton_handler->get_skeleton_html( $layout, $gallery_options, $image_count );
 		}
 		
 		// Use the DOM to generate the images (so that lightboxes can hook into them, and for better SEO)
@@ -556,8 +559,7 @@ class Meow_MGL_Core {
 			'captions_background' => 'fade-black',
 			'animation' => false,
 			'image_size' => 'srcset',
-			'infinite' => false,
-			'infinite_buffer' => 0,
+			
 			'rendering_mode' => 'dom', // Can be 'dom' or 'js'
 			'tiles_gutter' => 10,
 			'tiles_gutter_tablet' => 10,
@@ -595,9 +597,25 @@ class Meow_MGL_Core {
 			'mapbox_token' => '',
 			'mapbox_style' => '{"username":"", "style_id":""}',
 			'maptiler_token' => '',
+			
+			
+
+			//PRO OPTIONS
+			'infinite' => false,
+			'infinite_buffer' => 0,
 			'right_click' => false,
 			'gallery_shortcode_override_disabled' => false,
-			'skeleton_loading' => true,
+			'skeleton_loading' => false,
+		);
+	}
+
+	function list_pro_options() {
+		return array(
+			'infinite' => false,
+			'infinite_buffer' => 0,
+			'right_click' => false,
+			'gallery_shortcode_override_disabled' => false,
+			'skeleton_loading' => false,
 		);
 	}
 
@@ -608,10 +626,14 @@ class Meow_MGL_Core {
 	}
 
 	// Upgrade from the old way of storing options to the new way.
+	
 	function check_options( $options = [] ) {
 		$plugin_options = $this->list_options();
+		$pro_options = $this->list_pro_options();
+
 		$options = empty( $options ) ? [] : $options;
 		$hasChanges = false;
+
 		foreach ( $plugin_options as $option => $default ) {
 			// The option already exists
 			if ( isset( $options[$option] ) ) {
@@ -623,6 +645,16 @@ class Meow_MGL_Core {
 			delete_option( 'mgl_' . $option );
 			$hasChanges = true;
 		}
+
+		if( !$this->pro_module ) {
+			foreach ( $pro_options as $pro_option => $default ) {
+				if ( $options[$pro_option] !== $default ) {
+					$options[$pro_option] = $default;
+					$hasChanges = true;
+				}
+			}
+		}
+
 		if ( $hasChanges ) {
 			update_option( $this->option_name , $options );
 		}
@@ -976,7 +1008,7 @@ class Meow_MGL_Core {
 		return $galleries;
 	}
 
-	public function get_galleries( $offset = 0, $limit = 10, $order = 'DESC', $page = 1 ) {
+	public function get_galleries( $offset = 0, $limit = 10, $order = 'DESC', $page = 1, $search = '' ) {
 		global $wpdb;
 		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
 		
@@ -990,7 +1022,13 @@ class Meow_MGL_Core {
 		
 		// Use the new table
 		// Get total count
-		$total = $wpdb->get_var( "SELECT COUNT( * ) FROM $shortcodes_table" );
+		$total = 0;
+		if ( empty( $search ) ) {
+			$total = $wpdb->get_var( "SELECT COUNT( * ) FROM $shortcodes_table" );
+		} else {
+			$total = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT( * ) FROM $shortcodes_table WHERE name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%' ) );
+		}
+
 		// Calculate offset based on page if provided
 		if ($page > 1 && $offset === 0) {
 			$offset = ($page - 1) * $limit;
@@ -998,8 +1036,8 @@ class Meow_MGL_Core {
 		
 		// Get shortcodes with pagination and sorting
 		$query = $wpdb->prepare(
-			"SELECT * FROM $shortcodes_table ORDER BY updated_at $order LIMIT %d, %d",
-			$offset, $limit
+			"SELECT * FROM $shortcodes_table WHERE name LIKE %s ORDER BY updated_at $order LIMIT %d, %d",
+			'%' . $wpdb->esc_like( $search ) . '%', $offset, $limit
 		);
 		
 		$results = $wpdb->get_results( $query, ARRAY_A );
@@ -1072,7 +1110,7 @@ class Meow_MGL_Core {
 		return $collection;
 	}
 
-	public function get_collections( $offset = 0, $limit = 10, $order = 'DESC', $page = 1 ) {
+	public function get_collections( $offset = 0, $limit = 10, $order = 'DESC', $page = 1, $search = '' ) {
 		global $wpdb;
 		$collections_table = $wpdb->prefix . 'mgl_collections';
 		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
@@ -1086,7 +1124,11 @@ class Meow_MGL_Core {
 		}
 		
 		// Get total count
-		$total = $wpdb->get_var( "SELECT COUNT( * ) FROM $collections_table" );
+		if( empty( $search ) ) {
+			$total = $wpdb->get_var( "SELECT COUNT( * ) FROM $collections_table" );
+		} else {
+			$total = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT( * ) FROM $collections_table WHERE name LIKE %s", '%' . $wpdb->esc_like( $search ) . '%' ) );
+		}
 		// Calculate offset based on page if provided
 		if ($page > 1 && $offset === 0) {
 			$offset = ($page - 1) * $limit;
@@ -1094,8 +1136,8 @@ class Meow_MGL_Core {
 		
 		// Get collections with pagination and sorting
 		$query = $wpdb->prepare(
-			"SELECT * FROM $collections_table ORDER BY updated_at $order LIMIT %d, %d",
-			$offset, $limit
+			"SELECT * FROM $collections_table WHERE name LIKE %s ORDER BY updated_at $order LIMIT %d, %d",
+			'%' . $wpdb->esc_like( $search ) . '%', $offset, $limit
 		);
 		
 		$collections = $wpdb->get_results( $query, ARRAY_A );
