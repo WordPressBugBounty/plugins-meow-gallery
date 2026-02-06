@@ -1,6 +1,6 @@
 <?php
 
-class Meow_MGL_Admin extends MeowCommon_Admin {
+class Meow_MGL_Admin extends MeowKit_MGL_Admin {
 
 	private $core;
 	

@@ -21,12 +21,12 @@ spl_autoload_register(function ( $class ) {
   else if ( strpos( $class, 'Meow_MGL' ) !== false ) {
     $file = MGL_PATH . '/classes/' . str_replace( 'meow_mgl_', '', strtolower( $class ) ) . '.php';
   }
-  else if ( strpos( $class, 'MeowCommon_' ) !== false ) {
-    $file = MGL_PATH . '/common/' . str_replace( 'meowcommon_', '', strtolower( $class ) ) . '.php';
+  else if ( strpos( $class, 'MeowKit_MGL_' ) !== false ) {
+    $file = MGL_PATH . '/common/' . str_replace( 'meowkit_mgl_', '', strtolower( $class ) ) . '.php';
   }
-  else if ( strpos( $class, 'MeowCommonPro_' ) !== false ) {
+  else if ( strpos( $class, 'MeowKitPro_MGL_' ) !== false ) {
     $necessary = false;
-    $file = MGL_PATH . '/common/premium/' . str_replace( 'meowcommonpro_', '', strtolower( $class ) ) . '.php';
+    $file = MGL_PATH . '/common/premium/' . str_replace( 'meowkitpro_mgl_', '', strtolower( $class ) ) . '.php';
   }
   else if ( strpos( $class, 'MeowPro_MGL' ) !== false ) {
     $necessary = false;

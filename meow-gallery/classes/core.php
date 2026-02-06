@@ -30,10 +30,10 @@ class Meow_MGL_Core {
 		$this->skeleton_handler = new Meow_MGL_Skeleton();
 
 		// Initializes the classes needed
-		MeowCommon_Helpers::is_rest() && new Meow_MGL_Rest( $this );
+		MeowKit_MGL_Helpers::is_rest() && new Meow_MGL_Rest( $this );
 
 		// The gallery build process should only be enabled if the request is non-asynchronous
-		if ( !MeowCommon_Helpers::is_asynchronous_request()  ) {
+		if ( !MeowKit_MGL_Helpers::is_asynchronous_request()  ) {
 			add_filter( 'wp_get_attachment_image_attributes', array( $this, 'wp_get_attachment_image_attributes' ), 25, 3 );
 			if ( is_admin() || $this->is_gallery_used ) {
 				new Meow_MGL_Run( $this );
@@ -238,18 +238,50 @@ class Meow_MGL_Core {
 			$image_ids = implode( ',', $check );
 		}
 
+		// Limit images on archive/listing pages (not viewing the full single post)
+		$should_truncate = $this->get_option( 'truncate_on_listing', true );
+		$is_archive_context = !is_singular() && !is_admin() && !$isPreview && $should_truncate;
+		$is_archive_context = apply_filters( 'mgl_is_archive_context', $is_archive_context, $atts );
+		if ( $is_archive_context ) {
+			$archive_limit = intval( $this->get_option( 'truncate_count', 4 ) );
+
+			if( $archive_limit === 0 ) {
+				return ""; // If the user does not want the gallery to be shown at all on listing pages
+			}
+
+			if ( $archive_limit > 0 ) {
+				$check = explode( ',', $image_ids );
+				if ( count( $check ) > $archive_limit ) {
+					$check = array_slice( $check, 0, $archive_limit );
+					$image_ids = implode( ',', $check );
+					$atts['is_truncated'] = true; // Flag to potentially show "view more" indicator
+				}
+			}
+		}
+
 		// Ordering
 		if ( isset( $atts['orderby'] ) || isset( $atts['order_by'] ) ) {
-			
+
+			$orderby = '';
+			$order   = 'asc';
+
+			if ( isset( $atts['order'] ) ) {
+				$order = $atts['order'];
+			}
+
 			if ( isset( $atts['orderby'] ) ) {
 				$orderby = $atts['orderby'];
-				$order   = isset( $atts['order'] ) ? $atts['order'] : 'asc';
 			}
 
 			if ( isset( $atts['order_by'] ) ) {
-				$orderby = explode( '-', $atts['order_by'] )[0];
-				$order   = explode( '-', $atts['order_by'] )[1];
+				$orderby = $atts['order_by'];
 			}
+
+			if( strpos( $orderby, '-' ) === 0 ) {
+				$orderby = explode( '-', $orderby )[0];
+				$order   = explode( '-', $orderby )[1];
+			}
+
 
 			$image_ids = explode( ',', $image_ids );
 			$image_ids = Meow_MGL_OrderBy::run( $image_ids, $orderby, $order );
@@ -547,18 +579,22 @@ class Meow_MGL_Core {
 	}
 
 	function reset_options() {
+		delete_option( 'mgl_db_version');
 		delete_option( $this->option_name );
 	}
 
 	function list_options() {
 		return array(
 			'layout' => 'tiles',
-			'captions' => 'none',
+			'ç' => 'none',
 			'link' => null,
+			'caption_source' => 'caption',
 			'captions_alignment' => 'center',
 			'captions_background' => 'fade-black',
 			'animation' => false,
 			'image_size' => 'srcset',
+			'truncate_on_listing' => true,
+			'truncate_count' => 4,
 			
 			'rendering_mode' => 'dom', // Can be 'dom' or 'js'
 			'tiles_gutter' => 10,
@@ -679,6 +715,31 @@ class Meow_MGL_Core {
 
 	# endregion
 
+	function get_caption_from_source( $image ) {
+		$caption_source = $this->get_option( 'caption_source', 'caption' );
+		$caption = '';
+
+		switch ( $caption_source ) {
+			case 'title':
+				$caption = $image->title;
+				break;
+			case 'caption':
+				$caption = $image->caption;
+				break;
+			case 'description':
+				$caption = $image->description;
+				break;
+			case 'alt':
+				$caption = $image->alt;
+				break;
+			default:
+				$caption = $image->caption;
+				break;
+		}
+
+		return $caption;
+	}
+
 	function get_gallery_images( array $image_ids, array $atts, string $layout, string $size, array $posts_ids = []) {
 		global $wpdb;
 
@@ -686,19 +747,30 @@ class Meow_MGL_Core {
 		$ids = array_map( 'intval', $image_ids );
 		$ids_str = implode( ',', $ids );
 
-		$query = "SELECT p.ID id, p.post_excerpt caption, m.meta_value meta
-			FROM $wpdb->posts p, $wpdb->postmeta m
-			WHERE m.meta_key = '_wp_attachment_metadata'
-			AND p.ID = m.post_id
+		$query = "SELECT
+					p.ID id,
+					p.post_title title,
+					p.post_content description,
+					p.post_excerpt caption,
+					pm.meta_value alt,
+					pm2.meta_value meta
+
+			FROM $wpdb->posts p
+			LEFT JOIN $wpdb->postmeta pm  ON pm.post_id = p.ID  AND pm.meta_key  = '_wp_attachment_image_alt'
+			LEFT JOIN $wpdb->postmeta pm2 ON pm2.post_id = p.ID AND pm2.meta_key = '_wp_attachment_metadata'
+
+			WHERE p.post_type = 'attachment'
+
 			AND p.ID IN (" . $ids_str . ")
 		";
+
 		$res = $wpdb->get_results( $query );
 
 		$ids = explode( ',', $ids_str );
 		$images = [];
 		foreach ( $res as $r ) {
 			$images[$r->id] = [
-				'caption' => $r->caption,
+				'caption' => $this->get_caption_from_source( $r ),
 				'meta' => unserialize( $r->meta ),
 			];
 		}
@@ -769,7 +841,12 @@ class Meow_MGL_Core {
 	}
 
 	private function get_image_class( $id, $layout, $noLightbox ) {
-    $base_class = $layout === 'carousel' ? 'skip-lazy' : 'wp-image-' . $id;
+    $base_class = 'wp-image-' . $id;
+	
+	if( $layout === 'carousel' ) {
+		$base_class .= ' skip-lazy';
+	}
+
     if ( $noLightbox ) {
       $base_class .= ' no-lightbox';
     }
@@ -793,7 +870,7 @@ class Meow_MGL_Core {
 		if ( empty( $image_size ) || $image_size === 'srcset' ) {
 			$img_html = wp_get_attachment_image( $id, $size, false, [
 				'class' => $this->get_image_class( $id, $layout, $noLightbox ),
-				'draggable' => $layout === 'carousel' ? 'false' : null
+				'draggable' => $layout === 'carousel' ? 'false' : null,
 			]);
 		}
 		else {
@@ -822,6 +899,7 @@ class Meow_MGL_Core {
 				'src'      => true,
 				'srcset'   => true,
 				'loading'  => true,
+				'tabindex' => true,
 				'sizes'    => true,
 				'class'    => true,
 				'id'       => true,
@@ -1008,7 +1086,7 @@ class Meow_MGL_Core {
 		return $galleries;
 	}
 
-	public function get_galleries( $offset = 0, $limit = 10, $order = 'DESC', $page = 1, $search = '' ) {
+	public function get_galleries( $offset = 0, $limit = 10, $order = 'DESC', $sort = null, $page = 1, $search = '' ) {
 		global $wpdb;
 		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
 		
@@ -1035,8 +1113,17 @@ class Meow_MGL_Core {
 		}
 		
 		// Get shortcodes with pagination and sorting
+	    $sort_accessor_to_column = [
+			'info' => 'name',
+			'updated' => 'updated_at',
+			'rank' => 'pref_rank',
+		];
+		
+		$sort = $sort_accessor_to_column[$sort] ?? 'pref_rank';
+
+		// Sort by rank DESC first, then by updated_at for equal ranks
 		$query = $wpdb->prepare(
-			"SELECT * FROM $shortcodes_table WHERE name LIKE %s ORDER BY updated_at $order LIMIT %d, %d",
+			"SELECT * FROM $shortcodes_table WHERE name LIKE %s ORDER BY $sort $order, updated_at DESC LIMIT %d, %d",
 			'%' . $wpdb->esc_like( $search ) . '%', $offset, $limit
 		);
 		
@@ -1056,6 +1143,7 @@ class Meow_MGL_Core {
 				'hero' => ( bool )$gallery['is_hero_mode'],
 				'posts' => $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null,
 				'latest_posts' => $gallery['latest_posts'],
+				'rank' => intval( $gallery['pref_rank'] ?? 0 ),
 				'updated' => strtotime( $gallery['updated_at'] )
 			];
 		}

@@ -14,14 +14,23 @@ class Meow_MGL_Run {
 
 		if ( is_admin() ) {
 			add_action( 'init', array( $this, 'enqueue_scripts' ) );
-		}
-		else {
+			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_styles' ) );
+		} else {
+			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_styles' ), 10 );
+			
 			add_action( 'mgl_gallery_created', array( $this, 'enqueue_scripts' ), 10, 0 );
 			add_action( 'mgl_collection_created', array( $this, 'enqueue_scripts' ), 10, 0 );
 		}
 
 		// Yoast: Some people really want this, but it needs to be reviewed as Yoast changed its API
 		//add_filter( 'wpseo_sitemap_urlimages', array( $this, 'wpseo_siteimap' ), 10, 2 );
+	}
+
+	function enqueue_styles() {
+		// Cache buster for CSS
+		$css_file = MGL_PATH . '/app/style.min.css';
+		$css_cache_buster = file_exists( $css_file ) ? filemtime( $css_file ) : MGL_VERSION;
+		wp_enqueue_style( 'mgl-css', plugins_url( '/app/style.min.css', __DIR__ ), null, $css_cache_buster );
 	}
 
 	function enqueue_scripts() {
@@ -35,6 +44,7 @@ class Meow_MGL_Run {
 		$physical_file = MGL_PATH . '/app/galleries.js';
 		$cache_buster = file_exists( $physical_file ) ? filemtime( $physical_file ) : MGL_VERSION;
 		wp_enqueue_script( 'mgl-js', plugins_url( '/app/galleries.js', __DIR__ ), array(), $cache_buster, true );
+
 
 		// TODO: This should be moved in a getter (since it is also used by tiles.php)
 		$density = [];
@@ -59,7 +69,6 @@ class Meow_MGL_Run {
 				'options' => $this->core->get_all_options(),
 			)
 		);
-		wp_enqueue_style( 'mgl-css', plugins_url( '/app/style.min.css', __DIR__ ), null, $cache_buster );
 	}
 
 	/*

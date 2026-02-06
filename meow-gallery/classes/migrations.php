@@ -1,7 +1,7 @@
 <?php
 
 class Meow_MGL_Migrations {
-    private $db_version = '1.5';
+    private $db_version = '2.5';
     private $core;
 
     public function __construct( $core ) {
@@ -38,6 +38,7 @@ class Meow_MGL_Migrations {
             is_hero_mode tinyint( 1 ) DEFAULT 0,
             posts longtext,
             latest_posts int( 11 ) DEFAULT NULL,
+            pref_rank int( 11 ) DEFAULT 0,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  ( id )
@@ -65,6 +66,7 @@ class Meow_MGL_Migrations {
         if ( version_compare( $current_version, '1.0', '<' ) ) {
             $this->migrate_options_to_tables();
         }
+
     }
 
     private function migrate_options_to_tables() {

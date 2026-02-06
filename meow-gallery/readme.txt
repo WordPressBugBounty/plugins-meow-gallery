@@ -1,54 +1,111 @@
 === Meow Gallery ===
 Contributors: TigrouMeow
 Tags: gallery, masonry, image, block, lightroom
+Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
-Tested up to: 6.8
+Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 5.3.6
+Stable tag: 5.4.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Polished, beautiful gallery built for simplicity and speed. Features Gallery Block, shortcode, or overrides standard WordPress gallery. 
+Tired of slow, bloated gallery plugins? You've earned a coffee ☺️ Polished, beautiful galleries that are blazing fast. No bloat, just beautiful layouts. Enjoy! 💕
 
 == Description ==
 
-Polished and beautiful gallery built for simplicity, appareance and speed. It features a Gallery Block, but you can also use a shortcode or let it override the standard WordPress gallery. It's responsive, retina-friendly, has modern layouts, blazing fast and tightly optimized. If you are interested in seeing the layouts in actions, click here: [Meow Gallery's Layouts](https://meowapps.com/meow-gallery/layouts/).
+**Meow Gallery is the lightweight, polished gallery solution for WordPress.** Built from scratch for simplicity, appearance, and speed. Features a Gallery Block, shortcode support, or works as an override for the standard WordPress gallery. It's responsive, retina-friendly, with modern layouts, and tightly optimized.
 
-=== Features ===
+Stop fighting bloated gallery plugins that turn your WordPress into a slower experience! 😘
 
-Uses WordPress and Gutenberg naturally without hacking it, and more importantly, without imposing its own system and making your website dependent of it. It means you can use the Meow Gallery and one day switch back to the WordPress core rendering, or anything else. It works everywhere, easily, and fits naturally in WordPress. We will never blow it up with features that most users do not need.
+Meow Gallery focuses on what actually matters: **Beautiful Layouts** and **Performance**. Check out [our official site](https://meowapps.com/meow-gallery/) and see [the layouts in action](https://meowapps.com/meow-gallery/layouts/) to get started.
+
+== Core Features ==
+
+🎨 **Beautiful Layouts**
+Choose from Tiles, Masonry, Justified (like Flickr), Square (like Instagram), Cascade, and Horizontal. Pro version adds Carousel and Map layouts.
+
+🚀 **Performance First**
+Built from scratch with modern code. No legacy bloat, no unnecessary features. Just clean, fast galleries.
+
+🔌 **WordPress Native**
+Works naturally with WordPress and Gutenberg without hacking it. Use the Gallery Block, shortcode, or override the standard WordPress gallery. Switch back anytime—no lock-in.
+
+📱 **Responsive & Retina**
+All layouts are fully responsive and retina-ready for crisp images on any device.
 
 [youtube https://youtu.be/ZyboZqZb9JQ]
 
-=== Layouts ===
+== Compatibility ==
 
-Shipped with the popular layouts such as Tiles, Masonry, Justified (like Flickr), Square (like Instagram), Cascade. The Pro version contains a few more layouts. Demo [here](https://meowapps.com/meow-gallery/layouts/).
+Since Meow Gallery works with WordPress naturally, it's compatible with most plugins and themes:
 
-=== Compatibility ===
+* **Lightbox**: Use any lightbox you prefer. We recommend [Meow Lightbox](https://wordpress.org/plugins/meow-lightbox/) for the best experience.
+* **Lightroom**: Fully compatible with [Photo Engine](https://wordpress.org/plugins/wplr-sync/) for media organization and Lightroom sync.
+* **External Links**: Use [Gallery Custom Links](https://wordpress.org/plugins/gallery-custom-links/) to add custom URLs to your images.
+* **Audio**: Add audio to images with [Audio Story Images](https://wordpress.org/plugins/audio-story-images/).
 
-Since this gallery works with WordPress in a natural way, it should be compatible with any other plugins or themes (of course, it depends on how those have been exactly implemented). The following plugins might interest you.
+SEO-friendly with automatic sitemap integration (works with Yoast SEO and others).
 
-* Lightbox: The choice of the lightbox is yours, so this gallery does not come with one. However, we made the [Meow Lightbox](https://wordpress.org/plugins/meow-lightbox/). It follows the same principles.
-* Lightroom: It fully works with [Photo Engine](https://wordpress.org/plugins/wplr-sync/), its Media Organizer, and its attributes. If you wish to use to control it with Lightroom, this is also easy!
-* External Links: If you want to create links from your images to external URLs, we recommend you the [Gallery Custom Links](https://wordpress.org/plugins/gallery-custom-links/) plugin.
-* Audio: You can also add sound, music or any kind of audio to an image. To do this, you can use [Audio Story Images](https://wordpress.org/plugins/audio-story-images/).
+== Pro Features ==
 
-This plugin is SEO-friendly, so for example, the list of images will be added in your sitemap (Yoast SEO does this).
+* **Infinite/Lazy Loading**: Faster page loading and smoother experience
+* **Carousel Layout**: Dynamic slider/carousel that can also work as a hero
+* **Map Layout**: GPS-based photo display for travel galleries
+* **Animations**: Bring your galleries to life with smooth animations
 
-=== Pro Version ===
-
-If you want to support us, you will get those additional features.
-
-* Infinite/Lazy loading, for a faster page loading and a smoother experience for the user.
-* The Carousel / Slider, a very cool and dynamic layout, that can also be used as a Hero.
-* The Map Layout, a different and really nice way to present your photos, or trips.
-* Animations on your galleries.
-
-You can find more information on this plugin on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
-
-Languages: English.
+You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.4.4 (2026/01/27) =
+* Add: New rank system to manually organize galleries.
+* Add: Bulk delete option to quickly remove multiple galleries.
+* Add: Ability to sort galleries by name.
+* Update: Preview mode now shows the "order by" setting.
+* Add: Truncate count option for galleries on the listing page to shorten long item counts.
+* Fix: Load more now registers and works correctly when using the editor.
+
+= 5.4.3 (2026/01/05) =
+* Add: Fallback width handling in the gallery height calculation.  
+* Add: Truncate option for listing pages to shorten long text.  
+* Update: Tutorial links.  
+* Add: Caption source selection and improved caption retrieval logic.  
+* Add: Expose the `mgl_load_more` function on the global window object (developers can trigger infinite gallery loading from custom scripts).
+
+= 5.4.2 (2025/12/16) =
+* Fix: Corrected box spacing (gutters).
+
+= 5.4.1 (2025/12/07) =
+* Update: Refined how shortcode ordering options are handled for more predictable display behavior.
+* Fix: Reset the plugin’s internal database version when options are reset to ensure a clean configuration state.
+* Add: Introduced tabindex support and improved keyboard navigation for better accessibility.
+* Fix: Ensured all block-related features safely handle list operations to prevent unexpected errors.
+
+= 5.4.0 (2025/12/04) =
+* Update: Better enqueuing.
+* Fix: Stop sending htmlPreview data with block content to improve performance.
+* Update: Apply the new stylesheet loading method in the WordPress admin area.
+* Fix: Ensure the lightbox render is triggered after async loading.
+* Fix: Add the base wp-image- class to carousel images.
+
+= 5.3.9 (2025/12/03) =
+* Fix: Resolve an issue where a broken gutter setting showed as [object Object].
+* Fix: Ensure the "animation" option is correctly included when using the block shortcode.
+* Add: Introduce a dedicated enqueue_styles method and refine how plugin scripts are loaded.
+* Add: Enable animation controls directly in the block settings.
+
+= 5.3.8 (2025/12/02) =
+* Update: Smoother and more modern system.
+* Update: Refreshed common libs.
+* Fix: Glitch with Meow Lightbox.
+* 🎵 Discuss with others about Meow Gallery on [the Discord](https://discord.gg/bHDGh38).
+* 🌴 Keep us motivated with [a little review here](https://wordpress.org/support/plugin/meow-gallery/reviews/). Thank you!
+* 🥰 If you want to help us, check our [Patreon](https://www.patreon.com/meowapps). Thank you!
+
+= 5.3.7 (2025/11/12) =
+* Add: Uploading state and preview feature for blocks.
+* Add: orderBy attribute and control to the Gallery block.
+* Fix: Drag and drop functionality in blocks.
 
 = 5.3.6 (2025/09/29) =
 * Add: Retrieve thumbnail sizes for Map Markers.

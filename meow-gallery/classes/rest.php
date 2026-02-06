@@ -72,6 +72,11 @@ class Meow_MGL_Rest
 			'permission_callback' => array( $this->core, 'can_access_features' ),
 			'callback' => array( $this, 'rest_remove_shortcode' ),
 		) );
+		register_rest_route( $this->namespace, '/update_gallery_rank', array(
+			'methods' => 'POST',
+			'permission_callback' => array( $this->core, 'can_access_features' ),
+			'callback' => array( $this, 'rest_update_gallery_rank' ),
+		) );
 
 		//Collection Manager
 		register_rest_route( $this->namespace, '/fetch_collections', array(
@@ -423,11 +428,13 @@ class Meow_MGL_Rest
 			$offset = isset( $params['offset'] ) ? $params['offset'] : 0;
 			$limit = isset( $params['limit'] ) ? $params['limit'] : 10;
 			$page = isset( $params['page'] ) ? $params['page'] : 1;
-			$sort_updated = $params['sort']['by']; // desc, asc
+			
 			$search = isset( $params['search'] ) ? $params['search'] : '';
-			$order = $sort_updated === 'desc' ? 'DESC' : 'ASC';
+			
+			$sort_by  = $params['sort']['accessor'] ?? null;
+			$order_by = strtoupper( $params['sort']['by'] ); // desc, asc
 
-			$res = $this->core->get_galleries( $offset, $limit, $order, $page, $search );
+			$res = $this->core->get_galleries( $offset, $limit, $order_by, $sort_by, $page, $search );
 			$shortcodes = $res['galleries'];
 			$total = $res['total'];
 			
@@ -460,6 +467,42 @@ class Meow_MGL_Rest
 			return new WP_REST_Response( ['success' => true, 'message' => 'Shortcode removed.'], 200 );
 		} catch ( Exception $e ) {
 			return new WP_REST_Response( ['success' => false, 'message' => $e->getMessage( )], 500 );
+		}
+	}
+
+	function rest_update_gallery_rank( $request ) {
+		try {
+			global $wpdb;
+			$params = $request->get_json_params();
+			$id = $params['id'];
+			$direction = $params['direction']; // 'up' or 'down'
+			
+			$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
+			
+			// Check if table exists
+			$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$shortcodes_table'" ) === $shortcodes_table;
+			
+			if ( !$table_exists ) {
+				throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ) );
+			}
+			
+			// Get current rank
+			$current_rank = $wpdb->get_var( $wpdb->prepare( "SELECT pref_rank FROM $shortcodes_table WHERE id = %s", $id ) );
+			$current_rank = intval( $current_rank );
+			
+			// Calculate new rank (up = higher priority = higher number, down = lower priority = lower number)
+			$new_rank = $direction === 'up' ? $current_rank + 1 : $current_rank - 1;
+			
+			// Update the rank
+			$wpdb->update(
+				$shortcodes_table,
+				['pref_rank' => $new_rank],
+				['id' => $id]
+			);
+			
+			return new WP_REST_Response( ['success' => true, 'message' => 'Gallery rank updated.', 'new_rank' => $new_rank], 200 );
+		} catch ( Exception $e ) {
+			return new WP_REST_Response( ['success' => false, 'message' => $e->getMessage()], 500 );
 		}
 	}
 
