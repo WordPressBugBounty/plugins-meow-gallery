@@ -5,7 +5,7 @@ Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 5.4.4
+Stable tag: 5.4.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,19 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.4.5 (2026/02/25) =
+* Fix: Validate the gallery sorting order so it only accepts ASC or DESC values.
+* Update: Refactor the gallery function to support options for preview.
+* Fix: Ensure collections correctly update the lightbox.
+* Add: Improve accessibility by adding keyboard shortcuts to jump to the start or end of the focused gallery.
+* Fix: Correct the manager’s layout override logic so shortcode and block settings behave as expected.
+* Update: Change permission checks to use the can_access_settings capability.
+* Fix: Improve menu layout loading behavior and visual consistency.
+* Fix: Provide a default map engine and a clear error message when none is configured.
+* 🎵 Discuss with others about Meow Gallery on [the Discord](https://discord.gg/bHDGh38).
+* 🌴 Keep us motivated with [a little review here](https://wordpress.org/support/plugin/meow-gallery/reviews/). Thank you!
+* 🥰 If you want to help us, check our [Patreon](https://www.patreon.com/meowapps). Thank you!
 
 = 5.4.4 (2026/01/27) =
 * Add: New rank system to manually organize galleries.

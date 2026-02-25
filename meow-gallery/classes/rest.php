@@ -44,7 +44,7 @@ class Meow_MGL_Rest
 		// Gallery Manager
 		register_rest_route( $this->namespace, '/latest_photos', array(
 			'methods' => 'GET',
-			'permission_callback' => array( $this->core, 'can_access_features' ),
+			'permission_callback' => array( $this->core, 'can_access_settings' ),
 			'callback' => array( $this, 'rest_latest_photos' ),
 			'args' => array(
 				'search' => array( 'required' => false ),
@@ -54,9 +54,21 @@ class Meow_MGL_Rest
 		) );
 		register_rest_route( $this->namespace, '/save_shortcode', array(
 			'methods' => 'POST',
-			'permission_callback' => array( $this->core, 'can_access_features' ),
+			'permission_callback' => array( $this->core, 'can_access_settings' ),
 			'callback' => array( $this, 'rest_save_shortcode' ),
 		) );
+		register_rest_route( $this->namespace, '/remove_shortcode', array(
+			'methods' => 'POST',
+			'permission_callback' => array( $this->core, 'can_access_settings' ),
+			'callback' => array( $this, 'rest_remove_shortcode' ),
+		) );
+		register_rest_route( $this->namespace, '/update_gallery_rank', array(
+			'methods' => 'POST',
+			'permission_callback' => array( $this->core, 'can_access_settings' ),
+			'callback' => array( $this, 'rest_update_gallery_rank' ),
+		) );
+
+		
 		register_rest_route( $this->namespace, '/fetch_shortcodes', array(
 			'methods' => 'POST',
 			'permission_callback' => array( $this->core, 'can_access_features' ),
@@ -67,33 +79,27 @@ class Meow_MGL_Rest
 			'permission_callback' => array( $this->core, 'can_access_features' ),
 			'callback' => array( $this, 'rest_fetch_gallery_items' ),
 		) );
-		register_rest_route( $this->namespace, '/remove_shortcode', array(
-			'methods' => 'POST',
-			'permission_callback' => array( $this->core, 'can_access_features' ),
-			'callback' => array( $this, 'rest_remove_shortcode' ),
-		) );
-		register_rest_route( $this->namespace, '/update_gallery_rank', array(
-			'methods' => 'POST',
-			'permission_callback' => array( $this->core, 'can_access_features' ),
-			'callback' => array( $this, 'rest_update_gallery_rank' ),
-		) );
+
+		
 
 		//Collection Manager
+		register_rest_route( $this->namespace, '/save_collection', array(
+			'methods' => 'POST',
+			'permission_callback' => array( $this->core, 'can_access_settings' ),
+			'callback' => array( $this, 'rest_save_collection' ),
+		) );
+		register_rest_route( $this->namespace, '/remove_collection', array(
+			'methods' => 'POST',
+			'permission_callback' => array( $this->core, 'can_access_settings' ),
+			'callback' => array( $this, 'rest_remove_collection' ),
+		) );
+
 		register_rest_route( $this->namespace, '/fetch_collections', array(
 			'methods' => 'POST',
 			'permission_callback' => array( $this->core, 'can_access_features' ),
 			'callback' => array( $this, 'rest_fetch_collections' ),
 		) );
-		register_rest_route( $this->namespace, '/save_collection', array(
-			'methods' => 'POST',
-			'permission_callback' => array( $this->core, 'can_access_features' ),
-			'callback' => array( $this, 'rest_save_collection' ),
-		) );
-		register_rest_route( $this->namespace, '/remove_collection', array(
-			'methods' => 'POST',
-			'permission_callback' => array( $this->core, 'can_access_features' ),
-			'callback' => array( $this, 'rest_remove_collection' ),
-		) );
+		
 		register_rest_route( $this->namespace, '/load_gallery_collection', array(
 			'methods' => 'POST',
 			'permission_callback' => '__return_true',
@@ -142,7 +148,7 @@ class Meow_MGL_Rest
 		if ( $is_collection ) {
 			$html = do_shortcode( '[meow-collection id="' . $atts['collection'] . '"]' );
 		} else {
-			$html = $this->core->gallery( $atts, true );
+			$html = $this->core->gallery( $atts, [ 'isPreview' => true ] );
 		}
 
 		
@@ -160,7 +166,7 @@ class Meow_MGL_Rest
 				'wplr_collection_id' => 'wplr-collection',
 			];
 
-			$html = $this->core->gallery( [ $key[$search_slug] => $gallery_id ], false );
+			$html = $this->core->gallery( [ $key[$search_slug] => $gallery_id ], [ 'isPreview' => false, 'isRest' => true ] );
 			$mwlData = json_encode( $this->core->get_rewritten_mwl_data( ) );
 			return new WP_REST_Response( [ 'success' => true, 'data' => $html, 'mwl_data' => $mwlData ], 200 );
 		}

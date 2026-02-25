@@ -100,8 +100,11 @@ class Meow_MGL_Core {
 		return $this->rewrittenMwlData;
 	}
 
-	function gallery( $atts, $isPreview = false ) {
+	function gallery( $atts, $options = [] ) {
 		$atts = apply_filters( 'shortcode_atts_gallery', $atts, null, $atts, 'gallery' );
+
+		$isPreview = isset( $options['isPreview'] ) ? $options['isPreview'] : false;
+		$isRest = isset( $options['isRest'] ) ? $options['isRest'] : false;
 
 		// Sanitize the atts to avoid XSS
 		$atts = array_map( function( $x ) { 
@@ -155,12 +158,14 @@ class Meow_MGL_Core {
 			$image_ids = $shortcode['medias']['thumbnail_ids'];
 			unset( $shortcode['medias'] );
 
-			if ( isset( $shortcode['layout'] ) ) {
-				$layout = $shortcode['layout'];
-				unset( $shortcode['layout'] );
+			//* We merge $atts into $shortcode ( not $shortcode into $atts ) so we can override the gallery settings even when using the ID.
+			// Override specifics: "default" layout from atts should be the layout from shortcode
+			if( array_key_exists('layout', $atts) && $atts['layout'] == 'default' )
+			{ 
+				$atts['layout'] = $shortcode['layout'];
 			}
 
-			$atts = array_merge( $atts, $shortcode );
+			$atts = array_merge( $shortcode, $atts );
 		}
 
 		if ( isset( $atts['ids'] ) ) {
@@ -240,7 +245,7 @@ class Meow_MGL_Core {
 
 		// Limit images on archive/listing pages (not viewing the full single post)
 		$should_truncate = $this->get_option( 'truncate_on_listing', true );
-		$is_archive_context = !is_singular() && !is_admin() && !$isPreview && $should_truncate;
+		$is_archive_context = !is_singular() && !is_admin() && !$isPreview && !$isRest && $should_truncate;
 		$is_archive_context = apply_filters( 'mgl_is_archive_context', $is_archive_context, $atts );
 		if ( $is_archive_context ) {
 			$archive_limit = intval( $this->get_option( 'truncate_count', 4 ) );
@@ -624,7 +629,7 @@ class Meow_MGL_Core {
 			'carousel_arrow_nav_enabled' => true,
 			'carousel_dot_nav_enabled' => true,
 			'carousel_infinite' => false,
-			'map_engine' => '',
+			'map_engine' => 'googlemaps',
 			'map_height' => 500,
 			'map_zoom' => 10,
 			'map_gutter' => 10,
@@ -1120,6 +1125,7 @@ class Meow_MGL_Core {
 		];
 		
 		$sort = $sort_accessor_to_column[$sort] ?? 'pref_rank';
+		$order = in_array( strtoupper( $order ), ['ASC', 'DESC'] ) ? strtoupper( $order ) : 'DESC';
 
 		// Sort by rank DESC first, then by updated_at for equal ranks
 		$query = $wpdb->prepare(
