@@ -176,6 +176,54 @@ class Meow_MGL_Core {
 			$atts['include'] = $image_ids;
 		}
 
+		// Tags support
+		if ( isset( $atts['tags'] ) && !empty( $atts['tags'] ) ) {
+			$tags = is_array( $atts['tags'] ) ? $atts['tags'] : array_map( 'trim', explode( ',', $atts['tags'] ) );
+			
+			// Try multiple common taxonomies used for media tagging
+			$taxonomies_to_try = [ 'post_tag', 'media_tag', 'attachment_tag', 'attachment_category' ];
+			$taxonomies_to_try = apply_filters( 'mgl_tags_taxonomies', $taxonomies_to_try );
+			
+			$tagged_media_ids = [];
+			
+			foreach ( $taxonomies_to_try as $taxonomy ) {
+				if ( !taxonomy_exists( $taxonomy ) ) {
+					continue;
+				}
+				
+				$args = [
+					'post_type' => 'attachment',
+					'post_status' => 'inherit',
+					'posts_per_page' => -1,
+					'fields' => 'ids',
+					'tax_query' => [
+						[
+							'taxonomy' => $taxonomy,
+							'field' => 'slug',
+							'terms' => $tags,
+						]
+					]
+				];
+				
+				$query = new WP_Query( $args );
+				if ( !empty( $query->posts ) ) {
+					$tagged_media_ids = array_merge( $tagged_media_ids, $query->posts );
+				}
+			}
+			
+			$tagged_media_ids = array_unique( $tagged_media_ids );
+			
+			if ( !empty( $tagged_media_ids ) ) {
+				if ( !empty( $image_ids ) ) {
+					// Merge with existing IDs
+					$existing_ids = is_array( $image_ids ) ? $image_ids : explode( ',', $image_ids );
+					$image_ids = implode( ',', array_unique( array_merge( $existing_ids, $tagged_media_ids ) ) );
+				} else {
+					$image_ids = implode( ',', $tagged_media_ids );
+				}
+			}
+		}
+
 		if ( isset( $atts['latest_posts'] ) ) {
 			$num_posts = intval( $atts['latest_posts'] );
 
@@ -217,6 +265,7 @@ class Meow_MGL_Core {
 			$image_ids = implode(',', $featured_images);
 			$posts_ids = array_values($posts_ids);
 		}
+
 
 		// Filter the IDs
 		$ids = is_array( $image_ids ) ? $image_ids : explode( ',', $image_ids );
@@ -1062,6 +1111,7 @@ class Meow_MGL_Core {
 		}
 		$gallery['medias'] = maybe_unserialize( $gallery['medias'] );
 		$gallery['posts'] = $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null;
+		$gallery['tags'] = $gallery['tags'] ? unserialize( $gallery['tags'] ) : null;
 
 		return $gallery;
 	}
@@ -1082,9 +1132,11 @@ class Meow_MGL_Core {
 				'lead_image_id' => $gallery['lead_image_id'],
 				'order_by' => $gallery['order_by'],
 				'is_post_mode' => ( bool )$gallery['is_post_mode'],
+				'dynamic_source' => $gallery['dynamic_source'],
 				'hero' => ( bool )$gallery['is_hero_mode'],
 				'posts' => $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null,
 				'latest_posts' => $gallery['latest_posts'],
+				'tags' => $gallery['tags'] ? unserialize( $gallery['tags'] ) : null,
 				'updated' => strtotime( $gallery['updated_at'] )
 			];
 		}
@@ -1094,16 +1146,8 @@ class Meow_MGL_Core {
 	public function get_galleries( $offset = 0, $limit = 10, $order = 'DESC', $sort = null, $page = 1, $search = '' ) {
 		global $wpdb;
 		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
-		
-		// Check if table exists, if not fall back to option
-		$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$shortcodes_table'" ) === $shortcodes_table;
-		
-		if ( !$table_exists ) {
-			throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ));
-			return;
-		}
-		
-		// Use the new table
+		Meow_MGL_Migrations::check_db();
+
 		// Get total count
 		$total = 0;
 		if ( empty( $search ) ) {
@@ -1149,6 +1193,8 @@ class Meow_MGL_Core {
 				'hero' => ( bool )$gallery['is_hero_mode'],
 				'posts' => $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null,
 				'latest_posts' => $gallery['latest_posts'],
+				'tags' => $gallery['tags'] ? unserialize( $gallery['tags'] ) : null,
+				'dynamic_source' => $gallery['dynamic_source'],
 				'rank' => intval( $gallery['pref_rank'] ?? 0 ),
 				'updated' => strtotime( $gallery['updated_at'] )
 			];
@@ -1208,15 +1254,8 @@ class Meow_MGL_Core {
 		global $wpdb;
 		$collections_table = $wpdb->prefix . 'mgl_collections';
 		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
-		
-		// Check if table exists, if not fall back to option
-		$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$collections_table'" ) === $collections_table;
-		
-		if ( !$table_exists ) {
-			throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ));
-			return;
-		}
-		
+		Meow_MGL_Migrations::check_db();
+
 		// Get total count
 		if( empty( $search ) ) {
 			$total = $wpdb->get_var( "SELECT COUNT( * ) FROM $collections_table" );
@@ -1262,6 +1301,8 @@ class Meow_MGL_Core {
 						'hero' => ( bool )$gallery['is_hero_mode'],
 						'posts' => $gallery['posts'] ? unserialize( $gallery['posts'] ) : null,
 						'latest_posts' => $gallery['latest_posts'],
+						'tags' => $gallery['tags'] ? unserialize( $gallery['tags'] ) : null,
+						'dynamic_source' => $gallery['dynamic_source'],
 						'updated' => strtotime( $gallery['updated_at'] )
 					];
 					$galleries[] = $gallery_item;

@@ -1,24 +1,38 @@
 <?php
 
 class Meow_MGL_Migrations {
-    private $db_version = '2.5';
-    private $core;
+    private static $db_version = '2.8';
 
-    public function __construct( $core ) {
-        $this->core = $core;
-        add_action( 'plugins_loaded', array( $this, 'check_for_migrations' ) );
+    public function __construct(  ) {
+
     }
 
-    public function check_for_migrations() {
+    public static function check_db() {
+        global $wpdb;
+
         $current_db_version = get_option( 'mgl_db_version', '0' );
+        $version_outdated = version_compare( $current_db_version, self::$db_version, '<' );
         
-        if ( version_compare( $current_db_version, $this->db_version, '<' ) ) {
-            $this->run_migrations( $current_db_version );
-            update_option( 'mgl_db_version', $this->db_version );
+        // Also check if tables actually exist
+        $tables_exist = true;
+        if ( !$version_outdated ) {
+            $shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
+            $collections_table = $wpdb->prefix . 'mgl_collections';
+            $tables_exist = $wpdb->get_var( "SHOW TABLES LIKE '$shortcodes_table'" ) === $shortcodes_table
+                && $wpdb->get_var( "SHOW TABLES LIKE '$collections_table'" ) === $collections_table;
+        }
+        
+        if ( $version_outdated || !$tables_exist ) {
+            self::run_migrations( $current_db_version );
+            update_option( 'mgl_db_version', self::$db_version );
         }
     }
 
-    private function run_migrations( $current_version ) {
+    public function check_for_migrations() {
+        self::check_db();
+    }
+
+    private static function run_migrations( $current_version ) {
         global $wpdb;
         require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 
@@ -38,6 +52,8 @@ class Meow_MGL_Migrations {
             is_hero_mode tinyint( 1 ) DEFAULT 0,
             posts longtext,
             latest_posts int( 11 ) DEFAULT NULL,
+            tags longtext,
+            dynamic_source varchar( 50 ) DEFAULT NULL,
             pref_rank int( 11 ) DEFAULT 0,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -64,12 +80,12 @@ class Meow_MGL_Migrations {
 
         // Migrate existing data from options to tables
         if ( version_compare( $current_version, '1.0', '<' ) ) {
-            $this->migrate_options_to_tables();
+            self::migrate_options_to_tables();
         }
 
     }
 
-    private function migrate_options_to_tables() {
+    private static function migrate_options_to_tables() {
         global $wpdb;
         
         // Migrate shortcodes
@@ -95,6 +111,8 @@ class Meow_MGL_Migrations {
                     'is_hero_mode' => isset( $shortcode['hero'] ) && $shortcode['hero'] ? 1 : 0,
                     'posts' => isset( $shortcode['posts'] ) ? serialize( $shortcode['posts'] ) : null,
                     'latest_posts' => $shortcode['latest_posts'] ?? null,
+                    'tags' => isset( $shortcode['tags'] ) ? serialize( $shortcode['tags'] ) : null,
+                    'dynamic_source' => $shortcode['dynamic_source'] ?? null,
                     'updated_at' => date( 'Y-m-d H:i:s', $shortcode['updated'] )
                 )
             );
@@ -113,6 +131,8 @@ class Meow_MGL_Migrations {
                     'description' => $collection['description'] ?? '',
                     'layout' => $collection['layout'],
                     'galleries_ids' => serialize( $collection['galleries_ids'] ),
+                    'tags' => isset( $collection['tags'] ) ? serialize( $collection['tags'] ) : null,
+                    'dynamic_source' => $collection['dynamic_source'] ?? null,
                     'updated_at' => date( 'Y-m-d H:i:s', $collection['updated'] )
                 )
             );

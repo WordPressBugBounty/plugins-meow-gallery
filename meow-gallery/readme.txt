@@ -5,7 +5,7 @@ Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 5.4.5
+Stable tag: 5.4.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,14 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.4.6 (2026/04/15) =
+* Add: Dynamic galleries with Tags support, now available in the manager.
+* Add: "Order by" option is now always visible in the manager modal for easier sorting.
+* Fix: Block styling and properties now render correctly within iframes (Block API v3).
+* Fix: GPS coordinates from photo EXIF data are now handled more reliably, including support for float values.
+* Update: REST API method for the images endpoint changed from GET to POST—developers using this endpoint will need to update their requests accordingly.
+* Update: Internal database checks have been streamlined for improved reliability and cleaner codebase.
 
 = 5.4.5 (2026/02/25) =
 * Fix: Validate the gallery sorting order so it only accepts ASC or DESC values.

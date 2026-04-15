@@ -115,15 +115,9 @@ class Meow_MGL_Rest
 
 		// Gallery
 		register_rest_route( $this->namespace, '/images/', array(
-			'methods' => 'GET',
+			'methods' => 'POST',
 			'permission_callback' => '__return_true',
-			'callback' => array( $this, 'rest_images' ),
-			'args' => array(
-				'imageIds' => array( 'required' => true ),
-				'atts' => array( 'required' => true ),
-				'layout' => array( 'required' => true ),
-				'size' => array( 'required' => true ),
-			)
+			'callback' => array( $this, 'rest_images' )
 		) );
 
 		register_rest_route( $this->namespace, '/fetch_posts', array(
@@ -196,6 +190,8 @@ class Meow_MGL_Rest
 			$description = $params['description'];
 			$posts = $params['posts'];
 			$latest_posts = $params['latest_posts'];
+			$tags = $params['tags'];
+			$dynamic_source = $params['dynamic_source'];
 			$lead_image_id = $params['lead_image_id'];
 			$order_by = $params['order_by'];
 			$is_post_mode = $params['is_post_mode'];
@@ -209,8 +205,12 @@ class Meow_MGL_Rest
 				throw new Exception( __( 'Please select at least one image.', MGL_DOMAIN ));
 			}
 
-			if ( $is_post_mode && ( !$posts && !$latest_posts )) {
+			if ( $is_post_mode && $dynamic_source === 'posts' && ( !$posts && !$latest_posts )) {
 				throw new Exception( __( 'Please select at least one post.', MGL_DOMAIN ));
+			}
+
+			if ( $is_post_mode && $dynamic_source === 'tags' && !$tags ) {
+				throw new Exception( __( 'Please enter at least one tag.', MGL_DOMAIN ));
 			}
 
 			if ( $is_hero_mode && !$is_post_mode ) {
@@ -222,17 +222,8 @@ class Meow_MGL_Rest
 			}
 
 			$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
-			
-			// Check if table exists, if not fall back to option
-			$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$shortcodes_table'" ) === $shortcodes_table;
-			
-			if ( !$table_exists ) {
-				throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ));
-				return;
-				
-			}
+			Meow_MGL_Migrations::check_db();
 
-			// Use the new table
 			// Check if the record exists
 			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT( * ) FROM $shortcodes_table WHERE id = %s", $id ));
 			
@@ -246,7 +237,9 @@ class Meow_MGL_Rest
 				'is_post_mode' => $is_post_mode ? 1 : 0,
 				'is_hero_mode' => $is_hero_mode ? 1 : 0,
 				'posts' => $posts ? serialize( $posts ) : null,
-				'latest_posts' => $latest_posts
+				'latest_posts' => $latest_posts,
+				'tags' => serialize( $tags ),
+				'dynamic_source' => $dynamic_source
 			];
 			
 			if ( $exists ) {
@@ -276,16 +269,8 @@ class Meow_MGL_Rest
 			$id = $params['id'];
 			
 			$collections_table = $wpdb->prefix . 'mgl_collections';
-			
-			// Check if table exists, if not fall back to option
-			$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$collections_table'" ) === $collections_table;
-			
-			if ( !$table_exists ) {
-				throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ));
-				return;
-			}
+			Meow_MGL_Migrations::check_db();
 
-			// Use the new table
 			$wpdb->delete( $collections_table, ['id' => $id] );
 			
 			
@@ -319,16 +304,8 @@ class Meow_MGL_Rest
 			}
 
 			$collections_table = $wpdb->prefix . 'mgl_collections';
-			
-			// Check if table exists, if not fall back to option
-			$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$collections_table'" ) === $collections_table;
-			
-			if ( !$table_exists ) {
-				throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ));
-				return;
-			} 
+			Meow_MGL_Migrations::check_db();
 
-			// Use the new table
 			// Check if the record exists
 			$exists = $wpdb->get_var( $wpdb->prepare( "SELECT COUNT( * ) FROM $collections_table WHERE id = %s", $id ));
 			
@@ -389,16 +366,8 @@ class Meow_MGL_Rest
 			$galleryIds = $params['galleryIds'];
 			
 			$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
-			
-			// Check if table exists, if not fall back to option
-			$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$shortcodes_table'" ) === $shortcodes_table;
-			
-			if ( !$table_exists ) {
-				throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ));
-				return;
-			}
-			
-			// Use the new table
+			Meow_MGL_Migrations::check_db();
+
 			$galleries = [];
 			if ( !empty( $galleryIds )) {
 				$ids_str = "'" . implode( "','", array_map( 'esc_sql', $galleryIds )) . "'";
@@ -416,6 +385,8 @@ class Meow_MGL_Rest
 						'hero' => ( bool )$gallery['is_hero_mode'],
 						'posts' => $gallery['posts'] ? unserialize( $gallery['posts'] ) : null,
 						'latest_posts' => $gallery['latest_posts'],
+						'tags' => unserialize( $gallery['tags'] ),
+						'dynamic_source' => $gallery['dynamic_source'],
 						'updated' => strtotime( $gallery['updated_at'] )
 					];
 				}
@@ -458,15 +429,8 @@ class Meow_MGL_Rest
 			$id = $params['id'];
 			
 			$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
-			
-			// Check if table exists, if not fall back to option
-			$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$shortcodes_table'" ) === $shortcodes_table;
-			
-			if ( !$table_exists ) {
-				throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ));
-				return;
-			}
-				
+			Meow_MGL_Migrations::check_db();
+
 			$wpdb->delete( $shortcodes_table, ['id' => $id] );
 			
 			
@@ -484,14 +448,8 @@ class Meow_MGL_Rest
 			$direction = $params['direction']; // 'up' or 'down'
 			
 			$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
-			
-			// Check if table exists
-			$table_exists = $wpdb->get_var( "SHOW TABLES LIKE '$shortcodes_table'" ) === $shortcodes_table;
-			
-			if ( !$table_exists ) {
-				throw new Exception( __( 'Table does not exist. Make sure you have the latest version of the plugin.', MGL_DOMAIN ) );
-			}
-			
+			Meow_MGL_Migrations::check_db();
+
 			// Get current rank
 			$current_rank = $wpdb->get_var( $wpdb->prepare( "SELECT pref_rank FROM $shortcodes_table WHERE id = %s", $id ) );
 			$current_rank = intval( $current_rank );
@@ -621,14 +579,16 @@ class Meow_MGL_Rest
 	}
 
 	function rest_images( $request ) {
-		$image_ids = trim( $request->get_param( 'imageIds' ) );
-		$atts = trim( $request->get_param( 'atts' ) );
-		$layout = trim( $request->get_param( 'layout' ) );
-		$size = trim( $request->get_param( 'size' ) );
+		$params = $request->get_json_params( );
+
+		$image_ids = $params['imageIds'];
+		$atts = $params['atts'];
+		$layout = trim( $params['layout'] );
+		$size = trim( $params['size'] );
 
 		return new WP_REST_Response( [
 			'success' => true,
-			'data' => $this->core->get_gallery_images( json_decode( $image_ids, true ), json_decode( $atts, true ), $layout, $size )
+			'data' => $this->core->get_gallery_images(  $image_ids, $atts, $layout, $size )
 		], 200 );
 	}
 
