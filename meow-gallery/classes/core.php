@@ -688,7 +688,12 @@ class Meow_MGL_Core {
 			'mapbox_style' => '{"username":"", "style_id":""}',
 			'maptiler_token' => '',
 			
-			
+			// Stylish effect options
+			'stylish_enabled' => false,
+			'stylish_border_radius' => 6,
+			'stylish_shadow_opacity' => 0.08,
+			'stylish_shadow_opacity_hover' => 0.12,
+			'stylish_transition_speed' => 250,
 
 			//PRO OPTIONS
 			'infinite' => false,

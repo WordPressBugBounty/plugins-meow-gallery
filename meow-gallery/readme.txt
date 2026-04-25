@@ -5,7 +5,7 @@ Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 5.4.7
+Stable tag: 5.4.8
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,11 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.4.8 (2026/04/25) =
+* Add: "Design Tool" feature (BETA).
+* Update: Removed the "stylish" setting for Tiles layout.
+* Update: Better UI/UX.
 
 = 5.4.7 (2026/04/19) =
 * Fix: Fixed a warning on missing thumbnails, showing graceful placeholders instead of broken images in both the backend and frontend.
