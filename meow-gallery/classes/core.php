@@ -9,6 +9,7 @@ class Meow_MGL_Core {
 	private $pro_module = false;
 
 	private static $plugin_option_name = 'mgl_options';
+	private $pro;
 	private $option_name = 'mgl_options';
 	private $infinite_layouts = [
 		'tiles',
@@ -44,7 +45,7 @@ class Meow_MGL_Core {
 
 		$this->pro_module = class_exists( 'MeowPro_MGL_Core' );
 		if ( $this->pro_module ) {
-			new MeowPro_MGL_Core( $this );
+			$this->pro = new MeowPro_MGL_Core( $this );
 		} else {
 			add_shortcode( 'meow-collection', array( $this, 'collection' ) );
 		}
@@ -58,6 +59,11 @@ class Meow_MGL_Core {
 
 		global $wpmgl;
 		$wpmgl = $this;
+
+		if ( $this->pro_module ) {
+			global $wpmgl_pro;
+			$wpmgl_pro = $this->pro;
+		}
 	}
 
 	function collection() {

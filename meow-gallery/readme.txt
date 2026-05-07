@@ -5,7 +5,7 @@ Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 5.4.8
+Stable tag: 5.4.9
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,13 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.4.9 (2026/05/07) =
+* Fix: Removed srcset attribute from collection thumbnails when not available.
+* Add: Exposed collection helpers for use by external plugins like Cleaner.
+* 🎵 Discuss with others about Meow Gallery on [the Discord](https://discord.gg/bHDGh38).
+* 🌴 Keep us motivated with [a little review here](https://wordpress.org/support/plugin/meow-gallery/reviews/). Thank you!
+* 🥰 If you want to help us, check our [Patreon](https://www.patreon.com/meowapps). Thank you!
 
 = 5.4.8 (2026/04/25) =
 * Add: "Design Tool" feature (BETA).
