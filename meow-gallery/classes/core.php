@@ -135,19 +135,22 @@ class Meow_MGL_Core {
 		$image_ids = array();
 		$layout = '';
 
-		if ( isset( $atts['id'] ) && isset( $atts['ids'] ) ) {
+		// All potential attributes that can be used to get the images for the gallery
+		$has_id  = isset( $atts['id'] )  && !empty( $atts['id'] );
+		$has_ids = isset( $atts['ids'] ) && !empty( $atts['ids'] );
+		$has_include = isset( $atts['include'] ) && !empty( $atts['include'] );
+		$has_tags    = isset( $atts['tags'] ) && !empty( $atts['tags'] );
+		$has_posts   = isset( $atts['posts'] ) && !empty( $atts['posts'] );
+		$has_latest_posts = isset( $atts['latest_posts'] ) && !empty( $atts['latest_posts'] );
 
-			// Check if the ids are empty, then we can use the id
-			if ( empty( $atts['ids'] ) ) {
-				unset( $atts['ids'] );
-			} else {
-				error_log( "⚠️ Meow Gallery: in gallery $atts[id] both 'id' and 'ids' attributes are used in the same shortcode. 'id' will be ignored." );
-			}
+		if ( $has_id && $has_ids ) {
+			unset( $atts['ids'] );
+			error_log( "⚠️ Meow Gallery: in gallery $atts[id] both 'id' and 'ids' attributes are used in the same shortcode. 'id' will be ignored." );
 		}
 
 		// Get the IDs
 		#region media_ids
-		if ( (isset( $atts['id'] ) && !empty($atts['id']) ) && !isset( $atts['ids'] ) ) {
+		if ( $has_id && !$has_ids ) {
 			$shortcode_id = $atts['id'];
 
 			try {
@@ -174,16 +177,17 @@ class Meow_MGL_Core {
 			$atts = array_merge( $shortcode, $atts );
 		}
 
-		if ( isset( $atts['ids'] ) ) {
+		if ( $has_ids ) {
 			$image_ids = $atts['ids'];
 		}
-		if ( isset( $atts['include'] ) ) {
+
+		if ( $has_include ) {
 			$image_ids = is_array( $atts['include'] ) ? implode( ',', $atts['include'] ) : $atts['include'];
 			$atts['include'] = $image_ids;
 		}
 
 		// Tags support
-		if ( isset( $atts['tags'] ) && !empty( $atts['tags'] ) ) {
+		if ( $has_tags ) {
 			$tags = is_array( $atts['tags'] ) ? $atts['tags'] : array_map( 'trim', explode( ',', $atts['tags'] ) );
 			
 			// Try multiple common taxonomies used for media tagging
@@ -230,7 +234,7 @@ class Meow_MGL_Core {
 			}
 		}
 
-		if ( isset( $atts['latest_posts'] ) ) {
+		if ( $has_latest_posts ) {
 			$num_posts = intval( $atts['latest_posts'] );
 
 			if ( $num_posts > 0 ) {
@@ -238,7 +242,7 @@ class Meow_MGL_Core {
 				$latest_posts = get_posts( [ 'numberposts' => $num_posts ] );
 				$latest_posts_ids = array_map( function( $x ) { return $x->ID; }, $latest_posts );
 
-				if ( isset( $atts['posts'] ) ) {
+				if ( $has_posts ) {
 					error_log( "⚠️ Meow Gallery: in gallery $atts[id] both 'latest_posts' and 'posts' attributes are used in the same shortcode. 'latest_posts' will be merged with 'posts'.");
 					$atts['posts'] = array_merge( $latest_posts_ids, explode(',', $atts['posts']) );
 				}
@@ -250,7 +254,7 @@ class Meow_MGL_Core {
 		}
 
 		$posts_ids = [];
-		if (isset($atts['posts'])) {
+		if ( $has_posts ) {
 			
 			$posts_ids = is_array( $atts['posts'] ) ? $atts['posts'] : explode( ',', $atts['posts'] );
 			$featured_images = [];
