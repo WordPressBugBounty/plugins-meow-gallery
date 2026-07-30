@@ -177,6 +177,19 @@ class Meow_MGL_Core {
 			$atts = array_merge( $shortcode, $atts );
 		}
 
+		// Real Media Library folder path (e.g. rml="2025/France/Tours").
+		// Re-evaluated here (not only from the top) so it also works when the value
+		// comes from a saved gallery loaded via [gallery id="..."]. The logic lives
+		// in Meow_MGL_RML::get_image_ids() to keep this method clean.
+		$has_rml = isset( $atts['rml'] ) && !empty( $atts['rml'] );
+		if ( $has_rml ) {
+			$rml_ids = Meow_MGL_RML::get_image_ids( $atts['rml'] );
+			if ( is_wp_error( $rml_ids ) ) {
+				return "<p class='meow-error'><b>Meow Gallery:</b> " . esc_html( $rml_ids->get_error_message() ) . "</p>";
+			}
+			$image_ids = implode( ',', $rml_ids );
+		}
+
 		if ( $has_ids ) {
 			$image_ids = $atts['ids'];
 		}
@@ -286,14 +299,7 @@ class Meow_MGL_Core {
 
 		// Use attached images if still empty
 		if ( empty( $image_ids ) ) {
-			$attachments = get_attached_media( 'image' );
-			$attachmentIds = array_map( function($x) { return $x->ID; }, $attachments );
-			if ( !empty( $attachmentIds ) ) {
-				$image_ids = implode( ',', $attachmentIds );
-			}
-			else {
-				return "<p class='meow-error'><b>Meow Gallery:</b> The gallery is empty.</p>";
-			}
+			return "<p class='meow-error'><b>Meow Gallery:</b> The gallery is empty.</p>";
 		}
 
 		if ( $isPreview ) {
@@ -476,7 +482,9 @@ class Meow_MGL_Core {
 			foreach ( $gallery_images as $image ) {
 				if ( !empty( $image['link_href'] ) ) {
 					// If there is a link, we will get the alt from the image id so we have a proper aria-label
-					$aria = get_post_meta( $image['id'], '_wp_attachment_image_alt', true );
+					$aria_label = __('Open image', MGL_DOMAIN);
+					$aria_value = esc_attr( get_post_meta( $image['id'], '_wp_attachment_image_alt', true ) );
+					$aria = !empty( $aria_value ) ? $aria_label . ': ' . $aria_value : $aria_label;
 
 					$custom_link_classes = apply_filters( 'mgl_custom_link_classes', '', $image );
 					$html .= '<a class="' . $custom_link_classes . '" href="' . $image['link_href'] . '" target="' . $image['link_target'] . '" rel="' . $image['link_rel'] . 
@@ -1162,6 +1170,8 @@ class Meow_MGL_Core {
 				'posts' => $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null,
 				'latest_posts' => $gallery['latest_posts'],
 				'tags' => $gallery['tags'] ? unserialize( $gallery['tags'] ) : null,
+				'dynamic_source' => $gallery['dynamic_source'],
+				'rml' => $gallery['rml'] ?? null,
 				'updated' => strtotime( $gallery['updated_at'] )
 			];
 		}
@@ -1220,6 +1230,7 @@ class Meow_MGL_Core {
 				'latest_posts' => $gallery['latest_posts'],
 				'tags' => $gallery['tags'] ? unserialize( $gallery['tags'] ) : null,
 				'dynamic_source' => $gallery['dynamic_source'],
+				'rml' => $gallery['rml'] ?? null,
 				'rank' => intval( $gallery['pref_rank'] ?? 0 ),
 				'updated' => strtotime( $gallery['updated_at'] )
 			];

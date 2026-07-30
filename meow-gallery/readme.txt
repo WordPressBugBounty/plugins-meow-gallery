@@ -5,7 +5,7 @@ Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 5.5.1
+Stable tag: 5.5.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,16 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.5.2 (2026/07/30) =
+* Add: Real Media Library support for galleries and collections, including as a Dynamic type in the Gallery Manager.
+* Fix: Infinite scroll now works on viewports without scrolling, using an IntersectionObserver to track the loading sentinel.
+* Fix: Collections with missing thumbnails are now handled gracefully.
+* Fix: Empty gallery handling simplified by removing unnecessary attachment retrieval.
+* Fix: Tables in the Collection Maker, Managers, and Shortcode Maker now display correctly on mobile viewports.
+* 🎵 Discuss with others about Meow Gallery on [the Discord](https://discord.gg/bHDGh38).
+* 🌴 Keep us motivated with [a little review here](https://wordpress.org/support/plugin/meow-gallery/reviews/). Thank you!
+* 🥰 If you want to help us, check our [Patreon](https://www.patreon.com/meowapps). Thank you!
 
 = 5.5.1 (2026/06/28) =
 * Update: Improved handling of image ID attributes in the gallery shortcode.

@@ -1,7 +1,7 @@
 <?php
 
 class Meow_MGL_Migrations {
-    private static $db_version = '2.8';
+    private static $db_version = '2.9';
 
     public function __construct(  ) {
 
@@ -54,6 +54,7 @@ class Meow_MGL_Migrations {
             latest_posts int( 11 ) DEFAULT NULL,
             tags longtext,
             dynamic_source varchar( 50 ) DEFAULT NULL,
+            rml varchar( 255 ) DEFAULT NULL,
             pref_rank int( 11 ) DEFAULT 0,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -67,6 +67,11 @@ class Meow_MGL_Rest
 			'permission_callback' => array( $this->core, 'can_access_settings' ),
 			'callback' => array( $this, 'rest_update_gallery_rank' ),
 		) );
+		register_rest_route( $this->namespace, '/rml_folders', array(
+			'methods' => 'GET',
+			'permission_callback' => array( $this->core, 'can_access_settings' ),
+			'callback' => array( $this, 'rest_rml_folders' ),
+		) );
 
 		
 		register_rest_route( $this->namespace, '/fetch_shortcodes', array(
@@ -159,6 +164,7 @@ class Meow_MGL_Rest
 			$key = [
 				'gallery_id' => 'id',
 				'wplr_collection_id' => 'wplr-collection',
+				'rml' => 'rml',
 			];
 
 			$shortcode_atts = array();
@@ -176,6 +182,13 @@ class Meow_MGL_Rest
 
 	function rest_all_settings( ) {
 		return new WP_REST_Response( [ 'success' => true, 'data' => $this->core->get_all_options( ) ], 200 );
+	}
+
+	function rest_rml_folders( ) {
+		if ( ! Meow_MGL_RML::is_available() ) {
+			return new WP_REST_Response( [ 'success' => true, 'available' => false, 'data' => [] ], 200 );
+		}
+		return new WP_REST_Response( [ 'success' => true, 'available' => true, 'data' => Meow_MGL_RML::get_all_folders() ], 200 );
 	}
 
 	function rest_reset_options( ) {
@@ -201,6 +214,7 @@ class Meow_MGL_Rest
 			$order_by = $params['order_by'];
 			$is_post_mode = $params['is_post_mode'];
 			$is_hero_mode = $params['is_hero_mode'];
+			$rml = $params['rml'] ?? null;
 
 			if ( !$name ) {
 				throw new Exception( __( 'Please enter a name for your shortcode.', MGL_DOMAIN ));
@@ -216,6 +230,10 @@ class Meow_MGL_Rest
 
 			if ( $is_post_mode && $dynamic_source === 'tags' && !$tags ) {
 				throw new Exception( __( 'Please enter at least one tag.', MGL_DOMAIN ));
+			}
+
+			if ( $is_post_mode && $dynamic_source === 'rml' && empty( $rml ) ) {
+				throw new Exception( __( 'Please select a Real Media Library folder.', MGL_DOMAIN ));
 			}
 
 			if ( $is_hero_mode && !$is_post_mode ) {
@@ -244,7 +262,8 @@ class Meow_MGL_Rest
 				'posts' => $posts ? serialize( $posts ) : null,
 				'latest_posts' => $latest_posts,
 				'tags' => serialize( $tags ),
-				'dynamic_source' => $dynamic_source
+				'dynamic_source' => $dynamic_source,
+				'rml' => $rml
 			];
 			
 			if ( $exists ) {
