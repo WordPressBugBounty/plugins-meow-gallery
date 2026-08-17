@@ -4,12 +4,12 @@ Tags: gallery, masonry, image, block, lightroom
 Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
 Tested up to: 7.0
-Requires PHP: 7.4
-Stable tag: 5.5.2
+Requires PHP: 8.1
+Stable tag: 5.5.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Tired of slow, bloated gallery plugins? You've earned a coffee ☺️ Polished, beautiful galleries that are blazing fast. No bloat, just beautiful layouts. Enjoy! 💕
+Tired of slow, bloated gallery plugins? Here is the answer! ☺️ Polished, beautiful galleries that are blazing fast. No bloat. Enjoy! 💕
 
 == Description ==
 
@@ -56,6 +56,13 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.5.3 (2026/08/17) =
+* Update: PHP 8.1 is now the minimum required version.
+* Add: Reworked dashboard with a plugin board view, AI site analysis and a bounded speed test.
+* Add: Border and hover options in the Design Tool.
+* Add: Preview mode indicator for gallery blocks in the post editor.
+* Fix: The `wp_get_attachment_image_attributes` filter now applies to infinite scroll and collections.
 
 = 5.5.2 (2026/07/30) =
 * Add: Real Media Library support for galleries and collections, including as a Dynamic type in the Gallery Manager.

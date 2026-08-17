@@ -146,12 +146,20 @@ class Meow_MGL_Rest
 		$is_collection = isset( $atts['collection'] ) && !empty( $atts['collection'] );
 		if ( $is_collection ) {
 			$html = do_shortcode( '[meow-collection id="' . $atts['collection'] . '"]' );
+			$counts = [ 'total' => 0, 'shown' => 0 ];
 		} else {
+			$this->core->last_preview_counts = [ 'total' => 0, 'shown' => 0 ];
 			$html = $this->core->gallery( $atts, [ 'isPreview' => true ] );
+			$counts = $this->core->last_preview_counts;
 		}
 
 		
-		return new WP_REST_Response( [ 'success' => true, 'data' => $html ], 200 );
+		return new WP_REST_Response( [
+			'success' => true,
+			'data'    => $html,
+			'total'   => intval( $counts['total'] ),
+			'shown'   => intval( $counts['shown'] ),
+		], 200 );
 	}
 
 	function rest_load_gallery_collection( $request ) {

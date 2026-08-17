@@ -8,6 +8,8 @@ class Meow_MGL_Core {
 	private $skeleton_handler;
 	private $pro_module = false;
 
+	private $preview_cutoff = 12; // Limit the number of images to show in the preview (for performance reasons)
+
 	private static $plugin_option_name = 'mgl_options';
 	private $pro;
 	private $option_name = 'mgl_options';
@@ -22,6 +24,9 @@ class Meow_MGL_Core {
 
 	private $rewrittenMwlData = [];
 
+	// Holds the image counts of the last preview render (used by the block editor).
+	public $last_preview_counts = [ 'total' => 0, 'shown' => 0 ];
+
 	public function __construct() {
 		load_plugin_textdomain( MGL_DOMAIN, false, MGL_PATH . '/languages' );
 
@@ -34,8 +39,10 @@ class Meow_MGL_Core {
 		MeowKit_MGL_Helpers::is_rest() && new Meow_MGL_Rest( $this );
 
 		// The gallery build process should only be enabled if the request is non-asynchronous
+		add_filter( 'wp_get_attachment_image_attributes', array( $this, 'wp_get_attachment_image_attributes' ), 25, 3 );
+
 		if ( !MeowKit_MGL_Helpers::is_asynchronous_request()  ) {
-			add_filter( 'wp_get_attachment_image_attributes', array( $this, 'wp_get_attachment_image_attributes' ), 25, 3 );
+
 			if ( is_admin() || $this->is_gallery_used ) {
 				new Meow_MGL_Run( $this );
 			}
@@ -96,14 +103,23 @@ class Meow_MGL_Core {
 			$sizes = '80vw';
 		else if ( $this->gallery_layout === 'justified' )
 			$sizes = '(max-width: 800px) 80vw, 50vw';
+
 		$sizes = apply_filters( 'mgl_sizes', $sizes, $this->gallery_layout, $attachment, $attr );
+		
 		if ( !empty( $sizes ) )
 			$attr['sizes'] = $sizes;
+		
 		return $attr;
 	}
 
 	function get_rewritten_mwl_data() {
 		return $this->rewrittenMwlData;
+	}
+
+	// Get the IDs of the image attachments attached to the current post.
+	private function get_attached_image_ids() {
+		$attachments = get_attached_media( 'image' );
+		return array_map( function( $x ) { return $x->ID; }, $attachments );
 	}
 
 	function gallery( $atts, $options = [] ) {
@@ -142,6 +158,7 @@ class Meow_MGL_Core {
 		$has_tags    = isset( $atts['tags'] ) && !empty( $atts['tags'] );
 		$has_posts   = isset( $atts['posts'] ) && !empty( $atts['posts'] );
 		$has_latest_posts = isset( $atts['latest_posts'] ) && !empty( $atts['latest_posts'] );
+		$has_attachments = isset( $atts['attachments'] ) && ( $atts['attachments'] === 'true' || $atts['attachments'] === true || $atts['attachments'] === 1 || $atts['attachments'] === '1' );
 
 		if ( $has_id && $has_ids ) {
 			unset( $atts['ids'] );
@@ -266,6 +283,13 @@ class Meow_MGL_Core {
 
 		}
 
+		if( $has_attachments ) {
+			$attachmentIds = $this->get_attached_image_ids();
+			if ( !empty( $attachmentIds ) ) {
+				$image_ids = implode( ',', $attachmentIds );
+			}
+		}
+
 		$posts_ids = [];
 		if ( $has_posts ) {
 			
@@ -297,14 +321,30 @@ class Meow_MGL_Core {
 
 		#endregion
 
+		// Fall back to the attachments of the current post if the gallery is empty and the option is enabled.
+		if ( empty( $image_ids ) && !$has_attachments && $this->get_option( 'use_attachments_on_empty', false ) ) {
+			$attachmentIds = $this->get_attached_image_ids();
+			if ( !empty( $attachmentIds ) ) {
+				$image_ids = implode( ',', $attachmentIds );
+				$has_attachments = true;
+			}
+		}
+
 		// Use attached images if still empty
 		if ( empty( $image_ids ) ) {
+
+			if( $has_attachments ) {
+				return "<p class='meow-error'><b>Meow Gallery:</b> No attached medias were found in the current post.</p>";
+			}
+
 			return "<p class='meow-error'><b>Meow Gallery:</b> The gallery is empty.</p>";
 		}
 
 		if ( $isPreview ) {
 			$check = explode( ',', $image_ids );
-			$check = array_slice( $check, 0, 40 );
+			$total = count( $check );
+			$check = array_slice( $check, 0, $this->preview_cutoff );
+			$this->last_preview_counts = [ 'total' => $total, 'shown' => count( $check ) ];
 			$image_ids = implode( ',', $check );
 		}
 
@@ -677,6 +717,8 @@ class Meow_MGL_Core {
 			'image_size' => 'srcset',
 			'truncate_on_listing' => true,
 			'truncate_count' => 4,
+			'use_attachments_on_empty' => false,
+			'debug_logs' => false,
 			
 			'rendering_mode' => 'dom', // Can be 'dom' or 'js'
 			'tiles_gutter' => 10,
@@ -719,8 +761,11 @@ class Meow_MGL_Core {
 			// Stylish effect options
 			'stylish_enabled' => false,
 			'stylish_border_radius' => 6,
+			'stylish_border_width' => 0,
+			'stylish_border_color' => '#ffffff',
 			'stylish_shadow_opacity' => 0.08,
 			'stylish_shadow_opacity_hover' => 0.12,
+			'stylish_hover_lift' => 2,
 			'stylish_transition_speed' => 250,
 
 			//PRO OPTIONS
@@ -830,6 +875,14 @@ class Meow_MGL_Core {
 	function get_gallery_images( array $image_ids, array $atts, string $layout, string $size, array $posts_ids = []) {
 		global $wpdb;
 
+		// Enable the image-attribute rewriting (and the 'mgl_sizes' filter) for the duration of this method.
+		// This matters when get_gallery_images() is called directly (e.g. infinite scroll via REST) without
+		// going through gallery(), which is what normally sets these on the initial page load.
+		$previous_gallery_process = $this->gallery_process;
+		$previous_gallery_layout = $this->gallery_layout;
+		$this->gallery_process = true;
+		$this->gallery_layout = $layout;
+
 		// Escape the array of IDs for SQL
 		$ids = array_map( 'intval', $image_ids );
 		$ids_str = implode( ',', $ids );
@@ -869,7 +922,10 @@ class Meow_MGL_Core {
 		$ids = apply_filters( 'mgl_sort', $cleanIds, $images, $layout, $atts );
 
 		if ($layout === 'map') {
-			return $this->get_map_images( $ids, $images, $atts );
+			$map_result = $this->get_map_images( $ids, $images, $atts );
+			$this->gallery_process = $previous_gallery_process;
+			$this->gallery_layout = $previous_gallery_layout;
+			return $map_result;
 		}
 
 		$result = [];
@@ -923,6 +979,9 @@ class Meow_MGL_Core {
 
 			$result[] = array_merge( $image, $mergedArray, $orientation );
 		}
+
+		$this->gallery_process = $previous_gallery_process;
+		$this->gallery_layout = $previous_gallery_layout;
 
 		return $result;
 	}
