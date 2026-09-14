@@ -10,7 +10,7 @@ class Meow_MGL_Admin extends MeowKit_MGL_Admin {
 		add_action( 'admin_menu', array( $this, 'app_menu' ) );
 		$blocks_enabled = function_exists( 'register_block_type' );
 		if ( $blocks_enabled ) {
-			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+			add_action( 'admin_enqueue_scripts', array( $this, 'register_block' ) );
 		}
 		$options = $this->core->get_all_options();
 		if ( ( $options['captions'] ?? 'notset' ) === 'notset' ) {
@@ -29,44 +29,12 @@ class Meow_MGL_Admin extends MeowKit_MGL_Admin {
 		echo '<div id="mgl-admin-settings"></div>';
 	}
 
-	function enqueue_scripts() {
-
-		// Javascript for gallery
-		$physical_file = MGL_PATH . '/app/galleries.js';
-		$cache_buster = file_exists( $physical_file ) ? filemtime( $physical_file ) : MGL_VERSION;
-		wp_register_script( 'mgl-gallery-js', plugins_url( '/app/galleries.js', __DIR__ ), 
-			array(), $cache_buster, false );
-
-		// Load the "admin" scripts
-		$physical_file = MGL_PATH . '/app/admin.js';
-		$cache_buster = file_exists( $physical_file ) ? filemtime( $physical_file ) : MGL_VERSION;
-		wp_register_script( 'mgl-admin-js', MGL_URL . '/app/admin.js', 
-			array( 'mgl-gallery-js', 'wp-editor', 'wp-i18n', 'wp-element' ), $cache_buster );
-		register_block_type( 'meow-gallery/gallery', array( 'editor_script' => 'mgl-admin-js' ));
-
-		// Load the fonts
-		wp_register_style( 'meow-neko-ui-lato-font', '//fonts.googleapis.com/css2?family=Lato:wght@100;300;400;700;900&display=swap');
-		wp_enqueue_style( 'meow-neko-ui-lato-font' );
-
-		// Localize and options
-		global $wplr;
-		wp_localize_script( 'mgl-admin-js', 'mgl_meow_gallery', [
-			//'api_nonce' => wp_create_nonce( 'mfrh_media_file_renamer' ),
-			'api_url' => get_rest_url( null, '/meow-gallery/v1/' ),
-			'rest_url' => get_rest_url(),
-			'plugin_url' => MGL_URL,
-			'prefix' => MGL_PREFIX,
-			'domain' => MGL_DOMAIN,
-			'is_pro' => class_exists( 'MeowPro_MGL_Core' ),
-			'is_registered' => !!$this->is_registered(),
-			'rest_nonce' => wp_create_nonce( 'wp_rest' ),
-			'wplr_collections' => $wplr ? $wplr->read_collections_recursively() : [],
-			'options' => $this->core->get_all_options(),
-			'galleries' => $this->core->get_galleries(),
-			'collections' => $this->core->get_collections(),
-		] );
-
-		wp_enqueue_script( 'mgl-admin-js' );
+	// The scripts and styles are all handled by Meow_MGL_Run; the block only needs to point at
+	// the admin bundle it registers.
+	function register_block() {
+		register_block_type( 'meow-gallery/gallery', array(
+			'editor_script' => Meow_MGL_Run::ADMIN_SCRIPT_HANDLE,
+		) );
 	}
 
 	function app_menu() {

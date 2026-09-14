@@ -105,7 +105,7 @@ class Meow_MGL_Migrations {
                     'name' => $shortcode['name'],
                     'description' => $shortcode['description'] ?? '',
                     'layout' => $shortcode['layout'],
-                    'medias' => serialize( $shortcode['medias'] ),
+                    'medias' => serialize( Meow_MGL_Core::normalize_medias( $shortcode['medias'] ?? null ) ),
                     'lead_image_id' => $shortcode['lead_image_id'] ?? null,
                     'order_by' => $shortcode['order_by'] ?? null,
                     'is_post_mode' => ( isset( $shortcode['is_post_mode'] ) && $shortcode['is_post_mode'] ) ? 1 : 0,
@@ -132,8 +132,6 @@ class Meow_MGL_Migrations {
                     'description' => $collection['description'] ?? '',
                     'layout' => $collection['layout'],
                     'galleries_ids' => serialize( $collection['galleries_ids'] ),
-                    'tags' => isset( $collection['tags'] ) ? serialize( $collection['tags'] ) : null,
-                    'dynamic_source' => $collection['dynamic_source'] ?? null,
                     'updated_at' => date( 'Y-m-d H:i:s', $collection['updated'] )
                 )
             );

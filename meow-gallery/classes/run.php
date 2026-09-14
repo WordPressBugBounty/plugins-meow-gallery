@@ -1,9 +1,34 @@
 <?php
 
+/*
+	Meow_MGL_Run is the single place where the assets of the plugin (everything under app/) are
+	registered and enqueued. Nothing else should call wp_enqueue_* / wp_register_* for them.
+
+	What exists, and when it gets loaded:
+
+	  app/style.min.css       'mgl-css'                 front-end + admin, always
+	  app/style-pro.min.css   'mgl-pro-css'             same, but Pro only
+	  app/galleries.js        'mgl-js'                  front-end: in the footer, once a gallery or
+	                                                    a collection has been built
+	                                                    admin: in the header, as a dependency of
+	                                                    the admin bundle
+	  app/admin.js            'mgl-admin-js'            admin only (settings, dashboard, block)
+	  Lato (Google Fonts)     'meow-neko-ui-lato-font'  admin only
+
+	To add data to the gallery bundle from somewhere else (the Pro class does it for the map
+	settings), hook 'mgl_scripts_registered' and localize on the handle it passes.
+*/
+
 class Meow_MGL_Run {
-	private $isEnqueued = false;
+
+	const SCRIPT_HANDLE = 'mgl-js';
+	const ADMIN_SCRIPT_HANDLE = 'mgl-admin-js';
+	const STYLE_HANDLE = 'mgl-css';
+	const PRO_STYLE_HANDLE = 'mgl-pro-css';
+	const FONT_STYLE_HANDLE = 'meow-neko-ui-lato-font';
+
 	private $core;
-	private $atts;
+	private $isRegistered = false;
 
 	public function __construct( $core ) {
 		$this->core = $core;
@@ -13,62 +38,113 @@ class Meow_MGL_Run {
 		add_shortcode( 'meow-gallery', array( $core, 'gallery' ) );
 
 		if ( is_admin() ) {
-			add_action( 'init', array( $this, 'enqueue_scripts' ) );
-			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_styles' ) );
+			// The gallery bundle is only registered: the admin bundle depends on it, so WordPress
+			// loads it for us, once, and in the right order.
+			add_action( 'init', array( $this, 'register_gallery_script' ) );
+			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_assets' ) );
 		} else {
 			add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_styles' ), 10 );
-			
-			add_action( 'mgl_gallery_created', array( $this, 'enqueue_scripts' ), 10, 0 );
-			add_action( 'mgl_collection_created', array( $this, 'enqueue_scripts' ), 10, 0 );
+
+			add_action( 'mgl_gallery_created', array( $this, 'enqueue_gallery_script' ), 10, 0 );
+			add_action( 'mgl_collection_created', array( $this, 'enqueue_gallery_script' ), 10, 0 );
 		}
 
 		// Yoast: Some people really want this, but it needs to be reviewed as Yoast changed its API
 		//add_filter( 'wpseo_sitemap_urlimages', array( $this, 'wpseo_siteimap' ), 10, 2 );
 	}
 
-	function enqueue_styles() {
-		// Cache buster for CSS
-		$css_file = MGL_PATH . '/app/style.min.css';
-		$css_cache_buster = file_exists( $css_file ) ? filemtime( $css_file ) : MGL_VERSION;
-		wp_enqueue_style( 'mgl-css', plugins_url( '/app/style.min.css', __DIR__ ), null, $css_cache_buster );
+	/*
+		Assets
+	*/
+
+	private function asset_url( $file ) {
+		return MGL_URL . 'app/' . $file;
 	}
 
-	function enqueue_scripts() {
-		// Only need to load the scripts once.
-		if ( $this->isEnqueued ) { 
+	// The file modification time is used as a cache buster, so a rebuild is picked up right away.
+	private function asset_version( $file ) {
+		$physical_file = MGL_PATH . '/app/' . $file;
+		return file_exists( $physical_file ) ? filemtime( $physical_file ) : MGL_VERSION;
+	}
+
+	// Styles, on the front-end as well as in the admin.
+	function enqueue_styles() {
+		wp_enqueue_style( self::STYLE_HANDLE, $this->asset_url( 'style.min.css' ), null,
+			$this->asset_version( 'style.min.css' ) );
+
+		if ( class_exists( 'MeowPro_MGL_Core' ) ) {
+			wp_enqueue_style( self::PRO_STYLE_HANDLE, $this->asset_url( 'style-pro.min.css' ), null,
+				$this->asset_version( 'style-pro.min.css' ) );
+		}
+	}
+
+	// Declares app/galleries.js and its settings. Safe to call more than once, and required before
+	// anything can enqueue or localize that script.
+	function register_gallery_script() {
+		if ( $this->isRegistered ) {
 			return;
 		}
-		$this->isEnqueued = true;
+		$this->isRegistered = true;
 
-		// Load the JS for Meow Gallery
-		$physical_file = MGL_PATH . '/app/galleries.js';
-		$cache_buster = file_exists( $physical_file ) ? filemtime( $physical_file ) : MGL_VERSION;
-		wp_enqueue_script( 'mgl-js', plugins_url( '/app/galleries.js', __DIR__ ), array(), $cache_buster, true );
+		// In the admin, the block editor bundle runs in the header, so this one cannot be deferred.
+		$in_footer = !is_admin();
 
+		wp_register_script( self::SCRIPT_HANDLE, $this->asset_url( 'galleries.js' ), array(),
+			$this->asset_version( 'galleries.js' ), $in_footer );
 
-		// TODO: This should be moved in a getter (since it is also used by tiles.php)
-		$density = [];
-		if ( isset( $this->atts['density'] ) ) {
-			$density['desktop'] = $this->atts['density'];
-			$density['tablet'] = $this->atts['density'];
-			$density['mobile'] = $this->atts['density'];
-		}
-		else {
-			$density['desktop'] = $this->core->get_option( 'tiles_density', 'high' );
-			$density['tablet'] = $this->core->get_option( 'tiles_density_tablet', 'medium' );
-			$density['mobile'] = $this->core->get_option( 'tiles_density_mobile', 'low' );
-		}
-
-		wp_localize_script('mgl-js', 'mgl_settings',
+		wp_localize_script( self::SCRIPT_HANDLE, 'mgl_settings',
 			array(
 				'infinite_buffer' => $this->core->get_option( 'infinite_buffer', 0 ),
 				'disable_right_click' => !$this->core->get_option( 'right_click', false ),
-				'tiles' => array( 'density' => $density ),
+				'tiles' => array( 'density' => Meow_MGL_Core::get_tiles_density() ),
 				'api_url' => get_rest_url( null, '/meow-gallery/v1/' ),
 				'rest_nonce' => wp_create_nonce( 'wp_rest' ),
 				'options' => $this->core->get_all_options(),
 			)
 		);
+
+		do_action( 'mgl_scripts_registered', self::SCRIPT_HANDLE );
+	}
+
+	// Front-end: called once a gallery or a collection has been built.
+	function enqueue_gallery_script() {
+		$this->register_gallery_script();
+		wp_enqueue_script( self::SCRIPT_HANDLE );
+	}
+
+	// Admin: the styles, the fonts and app/admin.js (settings, Meow dashboard, Gutenberg block).
+	// The gallery bundle comes along as a dependency, since the block editor renders galleries.
+	function enqueue_admin_assets() {
+		$this->enqueue_styles();
+
+		wp_enqueue_style( self::FONT_STYLE_HANDLE,
+			'//fonts.googleapis.com/css2?family=Lato:wght@100;300;400;700;900&display=swap' );
+
+		wp_register_script( self::ADMIN_SCRIPT_HANDLE, $this->asset_url( 'admin.js' ),
+			array( self::SCRIPT_HANDLE, 'wp-editor', 'wp-i18n', 'wp-element' ),
+			$this->asset_version( 'admin.js' ) );
+
+		global $wplr;
+		wp_localize_script( self::ADMIN_SCRIPT_HANDLE, 'mgl_meow_gallery',
+			array(
+				'api_url' => get_rest_url( null, '/meow-gallery/v1/' ),
+				'rest_url' => get_rest_url(),
+				'plugin_url' => MGL_URL,
+				'prefix' => MGL_PREFIX,
+				'domain' => MGL_DOMAIN,
+				'is_pro' => class_exists( 'MeowPro_MGL_Core' ),
+				// Same check as MeowKit_MGL_Admin::is_registered(), which lives in another class.
+				'is_registered' => !!apply_filters( MGL_PREFIX . '_meowapps_is_registered', false, MGL_PREFIX ),
+				'rest_nonce' => wp_create_nonce( 'wp_rest' ),
+				'wplr_collections' => $wplr ? $wplr->read_collections_recursively() : [],
+				'options' => $this->core->get_all_options(),
+				// Names only: the selectors don't need the medias (see get_gallery_names).
+				'galleries' => $this->core->get_gallery_names(),
+				'collections' => $this->core->get_collection_names(),
+			)
+		);
+
+		wp_enqueue_script( self::ADMIN_SCRIPT_HANDLE );
 	}
 
 	/*

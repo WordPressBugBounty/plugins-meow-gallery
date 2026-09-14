@@ -8,7 +8,7 @@ class Meow_MGL_Core {
 	private $skeleton_handler;
 	private $pro_module = false;
 
-	private $preview_cutoff = 12; // Limit the number of images to show in the preview (for performance reasons)
+	public $preview_cutoff = 12; // Limit the number of images to show in the preview (for performance reasons)
 
 	private static $plugin_option_name = 'mgl_options';
 	private $pro;
@@ -48,7 +48,8 @@ class Meow_MGL_Core {
 			}
 		}
 
-		// Load the Pro version *after* loading the Run class due to the JS file was gatherd into one file.
+		// Load the Pro version *after* the Run class: both share the same JS bundle, and Run is
+		// the one registering it (the Pro class only localizes extra data on it).
 
 		$this->pro_module = class_exists( 'MeowPro_MGL_Core' );
 		if ( $this->pro_module ) {
@@ -684,6 +685,24 @@ class Meow_MGL_Core {
 		return self::$plugin_option_name;
 	}
 
+	// Tiles density, from the shortcode attributes when they set one, from the options otherwise.
+	// Shared by the front-end settings (Meow_MGL_Run) and the tiles CSS (Meow_MGL_Builders_Tiles).
+	static function get_tiles_density( $atts = [] ) {
+		if ( isset( $atts['density'] ) ) {
+			return array(
+				'desktop' => $atts['density'],
+				'tablet' => $atts['density'],
+				'mobile' => $atts['density'],
+			);
+		}
+		$options = get_option( self::$plugin_option_name, [] );
+		return array(
+			'desktop' => $options['tiles_density'] ?? 'high',
+			'tablet' => $options['tiles_density_tablet'] ?? 'medium',
+			'mobile' => $options['tiles_density_mobile'] ?? 'low',
+		);
+	}
+
 	static function get_plugin_option( $option_name, $default = null ) {
 		$options = get_option( self::$plugin_option_name, null );
 		if ( !empty( $options ) && array_key_exists( $option_name, $options ) ) {
@@ -1193,6 +1212,58 @@ class Meow_MGL_Core {
 	}
 
 
+	/**
+	 * Reads the "medias" of a gallery. Only the ordered attachment IDs are stored (older versions
+	 * also stored their URLs and mime types, which are ignored: they were a copy of the Media
+	 * Library that went stale). This is also the shape that gets written back, and all the
+	 * front-end needs. The Admin uses hydrate_medias() to get the URLs to display.
+	 */
+	public static function normalize_medias( $medias ) {
+		$ids = ( is_array( $medias ) && isset( $medias['thumbnail_ids'] ) && is_array( $medias['thumbnail_ids'] ) )
+			? array_values( $medias['thumbnail_ids'] ) : [];
+
+		return [ 'thumbnail_ids' => $ids ];
+	}
+
+	/**
+	 * Adds the 'thumbnails' the Admin displays: one entry per ID, with its URLs and mime type
+	 * resolved from the Media Library. Never stale, and a deleted attachment simply gets empty
+	 * URLs (the Admin then shows a placeholder). Not used on the front-end, which only needs
+	 * the IDs.
+	 */
+	public static function hydrate_medias( $medias ) {
+		$ids = self::normalize_medias( $medias )['thumbnail_ids'];
+
+		// One query for all the attachments instead of one per thumbnail. _prime_post_caches()
+		// only caches the attachments which exist, so anything still absent from the cache
+		// afterwards is gone: it's skipped instead of being queried on every request.
+		if ( !empty( $ids ) ) {
+			_prime_post_caches( array_values( array_unique( array_map( 'intval', $ids ) ) ), false, true );
+		}
+
+		$thumbnails = [];
+		foreach ( $ids as $id ) {
+			$thumbnail = [ 'id' => $id, 'url' => '', 'zoom_url' => '', 'mime' => '' ];
+
+			if ( !empty( $id ) && wp_cache_get( (int)$id, 'posts' ) ) {
+				$mime = get_post_mime_type( $id ) ?: '';
+				// Same rule as the latest_photos endpoint: videos have no image sizes, so their
+				// own URL is used for both the thumbnail and the zoom.
+				$is_video = strpos( $mime, 'video' ) !== false;
+				$url = $is_video ? wp_get_attachment_url( $id ) : wp_get_attachment_image_url( $id, 'thumbnail' );
+				$zoom = $is_video ? $url : wp_get_attachment_image_url( $id, 'large' );
+
+				$thumbnail['url'] = $url ?: '';
+				$thumbnail['zoom_url'] = $zoom ?: $thumbnail['url'];
+				$thumbnail['mime'] = $mime;
+			}
+
+			$thumbnails[] = $thumbnail;
+		}
+
+		return [ 'thumbnail_ids' => $ids, 'thumbnails' => $thumbnails ];
+	}
+
 	public function get_gallery_by_id( $id ) {
 		global $wpdb;
 		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
@@ -1201,7 +1272,7 @@ class Meow_MGL_Core {
 		if ( !$gallery ) {
 			throw new Exception( __( 'Gallery not found.', MGL_DOMAIN ));
 		}
-		$gallery['medias'] = maybe_unserialize( $gallery['medias'] );
+		$gallery['medias'] = self::normalize_medias( maybe_unserialize( $gallery['medias'] ) );
 		$gallery['posts'] = $gallery['posts'] ? maybe_unserialize( $gallery['posts'] ) : null;
 		$gallery['tags'] = $gallery['tags'] ? unserialize( $gallery['tags'] ) : null;
 
@@ -1220,7 +1291,7 @@ class Meow_MGL_Core {
 				'name' => $gallery['name'],
 				'description' => $gallery['description'],
 				'layout' => $gallery['layout'],
-				'medias' => maybe_unserialize( $gallery['medias'] ),
+				'medias' => self::normalize_medias( maybe_unserialize( $gallery['medias'] ) ),
 				'lead_image_id' => $gallery['lead_image_id'],
 				'order_by' => $gallery['order_by'],
 				'is_post_mode' => ( bool )$gallery['is_post_mode'],
@@ -1280,7 +1351,7 @@ class Meow_MGL_Core {
 				'name' => $gallery['name'],
 				'description' => $gallery['description'],
 				'layout' => $gallery['layout'],
-				'medias' => maybe_unserialize( $gallery['medias'] ),
+				'medias' => self::hydrate_medias( maybe_unserialize( $gallery['medias'] ) ),
 				'lead_image_id' => $gallery['lead_image_id'],
 				'order_by' => $gallery['order_by'],
 				'is_post_mode' => ( bool )$gallery['is_post_mode'],
@@ -1299,6 +1370,37 @@ class Meow_MGL_Core {
 			'total' => $total,
 			'galleries' => $shortcodes
 		];
+	}
+
+	/**
+	 * Just the id => name pairs, for the selectors (the Gutenberg block). They only need the
+	 * names, so this avoids shipping every gallery's medias in the page and, unlike
+	 * get_galleries(), it isn't paginated: the selectors used to be capped at 10 entries.
+	 */
+	public function get_gallery_names() {
+		global $wpdb;
+		$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
+		Meow_MGL_Migrations::check_db();
+
+		$names = [];
+		$results = $wpdb->get_results( "SELECT id, name FROM $shortcodes_table ORDER BY name ASC", ARRAY_A );
+		foreach ( $results as $gallery ) {
+			$names[$gallery['id']] = [ 'name' => $gallery['name'] ];
+		}
+		return [ 'galleries' => $names ];
+	}
+
+	public function get_collection_names() {
+		global $wpdb;
+		$collections_table = $wpdb->prefix . 'mgl_collections';
+		Meow_MGL_Migrations::check_db();
+
+		$names = [];
+		$results = $wpdb->get_results( "SELECT id, name FROM $collections_table ORDER BY name ASC", ARRAY_A );
+		foreach ( $results as $collection ) {
+			$names[$collection['id']] = [ 'name' => $collection['name'] ];
+		}
+		return [ 'collections' => $names ];
 	}
 
 	public function get_collection_by_id( $id ) {
@@ -1327,7 +1429,7 @@ class Meow_MGL_Core {
 					'name' => $gallery['name'],
 					'description' => $gallery['description'],
 					'layout' => $gallery['layout'],
-					'medias' => unserialize( $gallery['medias'] ),
+					'medias' => self::normalize_medias( maybe_unserialize( $gallery['medias'] ) ),
 					'lead_image_id' => $gallery['lead_image_id'],
 					'order_by' => $gallery['order_by'],
 					'is_post_mode' => ( bool )$gallery['is_post_mode'],
@@ -1389,7 +1491,7 @@ class Meow_MGL_Core {
 						'name' => $gallery['name'],
 						'description' => $gallery['description'],
 						'layout' => $gallery['layout'],
-						'medias' => unserialize( $gallery['medias'] ),
+						'medias' => self::hydrate_medias( maybe_unserialize( $gallery['medias'] ) ),
 						'lead_image_id' => $gallery['lead_image_id'],
 						'order_by' => $gallery['order_by'],
 						'is_post_mode' => ( bool )$gallery['is_post_mode'],

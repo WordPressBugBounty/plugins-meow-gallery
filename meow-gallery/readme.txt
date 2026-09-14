@@ -3,9 +3,9 @@ Contributors: TigrouMeow
 Tags: gallery, masonry, image, block, lightroom
 Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 5.5.3
+Stable tag: 5.5.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,14 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.5.4 (2026/09/14) =
+* Add: "See Full Preview" button in the gallery block.
+* Add: Uploads from the block are now attached to the post they're added to.
+* Fix: Collections with an empty name no longer crash the block.
+* Update: License errors now show the actual issue on the Plugins page, and the dashboard has been cleaned up.
+* Update: Media data is handled consistently across the block, collections and shortcodes.
+* Update: All scripts and styles are now registered in a single place.
 
 = 5.5.3 (2026/08/17) =
 * Update: PHP 8.1 is now the minimum required version.

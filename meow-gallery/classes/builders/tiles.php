@@ -26,17 +26,7 @@ class Meow_MGL_Builders_Tiles extends Meow_MGL_Builders_Core {
 			$gutter['mobile'] = $options['tiles_gutter_mobile'] ?? 10;
 		}
 
-		$density = [];
-		if ( isset( $this->atts['density'] ) ) {
-			$density['desktop'] = $this->atts['density'];
-			$density['tablet'] = $this->atts['density'];
-			$density['mobile'] = $this->atts['density'];
-		}
-		else {
-			$density['desktop'] = $options['tiles_density'] ?? 'high';
-			$density['tablet'] = $options['tiles_density_tablet'] ?? 'medium';
-			$density['mobile'] = $options['tiles_density_mobile'] ?? 'low';
-		}
+		$density = Meow_MGL_Core::get_tiles_density( $this->atts );
 
 		ob_start();
 		include dirname( __FILE__ ) . '/tiles.css.php';

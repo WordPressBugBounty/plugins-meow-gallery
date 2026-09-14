@@ -143,12 +143,18 @@ class Meow_MGL_Rest
 		$params->ids = implode( ',', $params->ids );
 		$atts = ( array ) $params;
 
+		$full = !empty( $atts['full'] );
+		unset( $atts['full'] );
+
 		$is_collection = isset( $atts['collection'] ) && !empty( $atts['collection'] );
 		if ( $is_collection ) {
 			$html = do_shortcode( '[meow-collection id="' . $atts['collection'] . '"]' );
 			$counts = [ 'total' => 0, 'shown' => 0 ];
 		} else {
 			$this->core->last_preview_counts = [ 'total' => 0, 'shown' => 0 ];
+			if ( $full ) {
+				$this->core->preview_cutoff = PHP_INT_MAX;
+			}
 			$html = $this->core->gallery( $atts, [ 'isPreview' => true ] );
 			$counts = $this->core->last_preview_counts;
 		}
@@ -210,7 +216,7 @@ class Meow_MGL_Rest
 			$params = $request->get_json_params( );
 
 			$id = $params['id'];
-			$medias = $params['medias'];
+			$medias = Meow_MGL_Core::normalize_medias( $params['medias'] ?? null );
 			$name = $params['name'];
 			$layout = $params['layout'];
 			$description = $params['description'];
@@ -228,7 +234,7 @@ class Meow_MGL_Rest
 				throw new Exception( __( 'Please enter a name for your shortcode.', MGL_DOMAIN ));
 			}
 
-			if ( !$is_post_mode && ( !$medias || !count( $medias['thumbnail_ids'] )) ) {
+			if ( !$is_post_mode && empty( $medias['thumbnail_ids'] ) ) {
 				throw new Exception( __( 'Please select at least one image.', MGL_DOMAIN ));
 			}
 
@@ -412,7 +418,7 @@ class Meow_MGL_Rest
 						'name' => $gallery['name'],
 						'description' => $gallery['description'],
 						'layout' => $gallery['layout'],
-						'medias' => unserialize( $gallery['medias'] ),
+						'medias' => Meow_MGL_Core::hydrate_medias( maybe_unserialize( $gallery['medias'] ) ),
 						'is_post_mode' => ( bool )$gallery['is_post_mode'],
 						'hero' => ( bool )$gallery['is_hero_mode'],
 						'posts' => $gallery['posts'] ? unserialize( $gallery['posts'] ) : null,
@@ -524,22 +530,19 @@ class Meow_MGL_Rest
 		) : '';
 		$join_clause = '';
 		if ( $unusedImages ) {
-			// Retrieve the serialized option from the database
-			$meow_gallery_shortcodes = get_option( 'mgl_shortcodes' );
+			// Every image used by a gallery, read from the galleries table (this used to read the
+			// old 'mgl_shortcodes' option, which isn't written anymore since the migration).
+			$shortcodes_table = $wpdb->prefix . 'mgl_gallery_shortcodes';
+			Meow_MGL_Migrations::check_db();
 
-			// Deserialize the option to get the array
-			$shortcodes_array = maybe_unserialize( $meow_gallery_shortcodes );
-
-			// Extract all thumbnail IDs from the array
 			$used_thumbnail_ids = [];
-			foreach ( $shortcodes_array as $shortcode ) {
-				if ( isset( $shortcode['medias']['thumbnail_ids'] ) && is_array( $shortcode['medias']['thumbnail_ids'] ) ) {
-					$used_thumbnail_ids = array_merge( $used_thumbnail_ids, $shortcode['medias']['thumbnail_ids'] );
-				}
+			foreach ( $wpdb->get_col( "SELECT medias FROM $shortcodes_table" ) as $medias ) {
+				$medias = Meow_MGL_Core::normalize_medias( maybe_unserialize( $medias ) );
+				$used_thumbnail_ids = array_merge( $used_thumbnail_ids, $medias['thumbnail_ids'] );
 			}
 
 			// Make sure the IDs are integers
-			$used_thumbnail_ids = array_map( 'intval', $used_thumbnail_ids );
+			$used_thumbnail_ids = array_unique( array_map( 'intval', $used_thumbnail_ids ) );
 
 			// Include the NOT IN clause to exclude used thumbnail IDs
 			if ( !empty( $used_thumbnail_ids ) ) {
