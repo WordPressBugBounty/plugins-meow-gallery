@@ -5,6 +5,13 @@ class Meow_MGL_Rest
 	private $core;
 	private $namespace = 'meow-gallery/v1';
 
+	// Gallery attributes that decide *which* media a gallery shows. They must never be taken from
+	// an untrusted request: see rest_load_gallery_collection().
+	private static $source_atts = [
+		'collection', 'id', 'ids', 'include', 'tags', 'posts', 'latest_posts', 'attachments',
+		'rml', 'wplr-collection', 'meow',
+	];
+
 	public function __construct( $core ) {
     $this->core = $core;
 
@@ -121,7 +128,7 @@ class Meow_MGL_Rest
 		// Gallery
 		register_rest_route( $this->namespace, '/images/', array(
 			'methods' => 'POST',
-			'permission_callback' => '__return_true',
+			'permission_callback' => array( $this, 'can_load_images' ),
 			'callback' => array( $this, 'rest_images' )
 		) );
 
@@ -137,6 +144,16 @@ class Meow_MGL_Rest
 		) );
 	}
 
+	// The /images/ route feeds the infinite scroll and nothing else: when it is off (the default,
+	// and always in the free version) the gallery is rendered whole and the front-end never calls
+	// this. It has to stay open to visitors when infinite scroll IS on, but leaving it open
+	// everywhere exposed the title, caption and URL of any attachment ID, including attachments of
+	// posts that are not published.
+	public function can_load_images() {
+		$infinite = class_exists( 'MeowPro_MGL_Core' ) && Meow_MGL_Core::get_plugin_option( 'infinite', false );
+		return apply_filters( 'mgl_allow_load_images', (bool) $infinite );
+	}
+
 	function preview( WP_REST_Request $request ) {
 		$params = $request->get_body( );
 		$params = json_decode( $params );
@@ -148,7 +165,7 @@ class Meow_MGL_Rest
 
 		$is_collection = isset( $atts['collection'] ) && !empty( $atts['collection'] );
 		if ( $is_collection ) {
-			$html = do_shortcode( '[meow-collection id="' . $atts['collection'] . '"]' );
+			$html = $this->core->render_collection( $atts['collection'] );
 			$counts = [ 'total' => 0, 'shown' => 0 ];
 		} else {
 			$this->core->last_preview_counts = [ 'total' => 0, 'shown' => 0 ];
@@ -171,15 +188,34 @@ class Meow_MGL_Rest
 	function rest_load_gallery_collection( $request ) {
 		try {
 			$params = $request->get_json_params( );
-			$gallery_id = $params['id'];
-			$search_slug = $params['search_slug'];
-			$gallery_atts = $params['gallery_atts'];
+			$gallery_id = $params['id'] ?? '';
+			$search_slug = $params['search_slug'] ?? '';
+			$gallery_atts = $params['gallery_atts'] ?? array();
+			$gallery_atts = is_array( $gallery_atts ) ? $gallery_atts : array();
 
 			$key = [
 				'gallery_id' => 'id',
 				'wplr_collection_id' => 'wplr-collection',
 				'rml' => 'rml',
 			];
+
+			// This route is public (visitors open galleries from a collection), so everything it
+			// receives is untrusted. The gallery to render is decided by 'search_slug' + 'id'
+			// only: the caller-supplied attributes are stripped of anything that could point the
+			// gallery at other content. Without this, 'collection' could be used to inject
+			// arbitrary shortcodes (reported by JunHee CHO, 2026-09).
+			if ( !isset( $key[ $search_slug ] ) ) {
+				return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Unknown gallery source.', MGL_DOMAIN ) ], 400 );
+			}
+			$gallery_atts = array_diff_key( $gallery_atts, array_flip( self::$source_atts ) );
+
+			// The RML source is a folder path, the others are identifiers.
+			if ( $search_slug !== 'rml' ) {
+				$gallery_id = Meow_MGL_Core::sanitize_id( $gallery_id );
+				if ( $gallery_id === '' ) {
+					return new WP_REST_Response( [ 'success' => false, 'message' => __( 'Invalid gallery ID.', MGL_DOMAIN ) ], 400 );
+				}
+			}
 
 			$shortcode_atts = array();
 			$shortcode_atts[ $key[$search_slug] ] = $gallery_id;
@@ -627,6 +663,31 @@ class Meow_MGL_Rest
 		], 200 );
 	}
 
+	// Applies WordPress's own visibility rules to a raw posts query: published posts for everyone,
+	// other people's drafts only with edit_others_posts, other people's private posts only with
+	// read_private_posts, and your own in both cases. 'upload_files' (the capability gating this
+	// REST controller) is held by Authors, who must not see the whole site's unpublished content.
+	private function get_post_status_clause( $alias = 'p', $post_type = 'post' ) {
+		global $wpdb;
+
+		$post_type_object = get_post_type_object( $post_type );
+		$read_private_cap = $post_type_object ? $post_type_object->cap->read_private_posts : 'read_private_posts';
+		$edit_others_cap = $post_type_object ? $post_type_object->cap->edit_others_posts : 'edit_others_posts';
+
+		$user_id = get_current_user_id();
+		$clause = "AND ( $alias.post_status = 'publish'";
+
+		$clause .= current_user_can( $read_private_cap )
+			? " OR $alias.post_status = 'private'"
+			: $wpdb->prepare( " OR ( $alias.post_status = 'private' AND $alias.post_author = %d )", $user_id );
+
+		$clause .= current_user_can( $edit_others_cap )
+			? " OR $alias.post_status = 'draft'"
+			: $wpdb->prepare( " OR ( $alias.post_status = 'draft' AND $alias.post_author = %d )", $user_id );
+
+		return $clause . " ) ";
+	}
+
 	function rest_fetch_posts( $request ) {
 		try {
 			$params = $request->get_json_params();
@@ -643,13 +704,18 @@ class Meow_MGL_Rest
 				$searchPlaceholder
 			) : '';
 
+			// The same clause is used by both queries on purpose: the search also matches
+			// post_content, so a count taken over a wider set than the rows would let a user probe
+			// the body of posts they cannot read (reported by Kaan Özbek, 2026-09).
+			$where_status_clause = $this->get_post_status_clause( 'p' );
+
 			$posts = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT p.ID, p.post_title, p.post_date, p.post_status, u.display_name as author
 					FROM $wpdb->posts p 
 					LEFT JOIN $wpdb->users u ON p.post_author = u.ID
 					WHERE p.post_type = 'post' 
-					AND p.post_status IN ('publish', 'draft', 'private')
+					$where_status_clause
 					$where_search_clause 
 					ORDER BY p.post_date DESC 
 					LIMIT %d, %d", 
@@ -663,7 +729,7 @@ class Meow_MGL_Rest
 				"SELECT COUNT(*)
 				FROM $wpdb->posts p 
 				WHERE p.post_type = 'post' 
-				AND p.post_status IN ('publish', 'draft', 'private')
+				$where_status_clause
 				$where_search_clause"
 			);
 

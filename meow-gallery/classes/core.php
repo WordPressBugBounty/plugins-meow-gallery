@@ -78,6 +78,32 @@ class Meow_MGL_Core {
 		return "<b>Meow Collection</b>: This is only available in the Pro version. Please <a href='https://meowapps.com/products/meow-gallery-pro/'>upgrade to Meow Gallery Pro</a> to use this feature.";
 	}
 
+	// Gallery and collection IDs are plain identifiers (generate_uniqid(), stored as varchar).
+	// Anything else is rejected, and rejected rather than stripped: stripping could turn a crafted
+	// ID into a different existing one. Security: esc_attr() does NOT escape "]", so an ID coming
+	// from a request and concatenated into a shortcode string could close the tag and run
+	// arbitrary shortcodes. Keep IDs on this charset and never build a shortcode string from them.
+	public static function sanitize_id( $id ) {
+		if ( !is_scalar( $id ) ) {
+			return '';
+		}
+		$id = (string) $id;
+		return preg_match( '/^[A-Za-z0-9_-]+$/', $id ) ? $id : '';
+	}
+
+	// Renders a collection from its ID. Deliberately calls the handler directly instead of going
+	// through do_shortcode(): there is no shortcode string to inject into that way.
+	public function render_collection( $id, $is_preview = false ) {
+		$id = self::sanitize_id( $id );
+		if ( $id === '' ) {
+			return "<p class='meow-error'><b>Meow Gallery:</b> This collection ID is not valid.</p>";
+		}
+		if ( $this->pro_module && $this->pro ) {
+			return $this->pro->collection( array( 'id' => $id ), $is_preview );
+		}
+		return $this->collection();
+	}
+
 	public function can_access_settings() {
 		return apply_filters( 'mgl_allow_setup', current_user_can( 'manage_options' ) );
 	}
@@ -144,9 +170,9 @@ class Meow_MGL_Core {
 			return gallery_shortcode( $atts );
 		}
 
-		// If the attributes contain "collection" then use the collection shortcode instead
+		// If the attributes contain "collection" then render that collection instead
 		if ( isset( $atts['collection'] ) && !empty( $atts['collection'] ) ) {
-			return do_shortcode( '[meow-collection id="' . $atts['collection'] . '"]' );
+			return $this->render_collection( $atts['collection'] );
 		}
 
 		$image_ids = array();
@@ -175,7 +201,8 @@ class Meow_MGL_Core {
 				$shortcode = $this->get_gallery_by_id( $shortcode_id );
 			}
 			catch ( Exception $e ) {
-				return "<p class='meow-error'><b>Meow Gallery:</b> This ID wasn't found in the Gallery Manager. (ID: $shortcode_id). " . $e->getMessage() . "</p>";
+				$safe_id = esc_html( is_scalar( $shortcode_id ) ? $shortcode_id : '' );
+				return "<p class='meow-error'><b>Meow Gallery:</b> This ID wasn't found in the Gallery Manager. (ID: $safe_id). " . esc_html( $e->getMessage() ) . "</p>";
 			}
 
 			if ( !isset( $shortcode['medias'] ) || !isset( $shortcode['medias']['thumbnail_ids'])) {

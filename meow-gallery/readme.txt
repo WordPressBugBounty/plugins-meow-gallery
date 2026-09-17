@@ -5,7 +5,7 @@ Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 5.5.4
+Stable tag: 5.5.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,11 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.5.5 (2026/09/17) =
+* Fix: Hotfix for an unauthenticated shortcode injection reported by JunHee CHO and Kaan Özbek.
+* Fix: Hotfix for a draft post disclosure reported by JunHee CHO and Kaan Özbek.
+* Update: The media endpoint is now disabled when infinite scroll is off.
 
 = 5.5.4 (2026/09/14) =
 * Add: "See Full Preview" button in the gallery block.
