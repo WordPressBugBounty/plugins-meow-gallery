@@ -1023,7 +1023,14 @@ class Meow_MGL_Core {
 
 			}
 
-			$result[] = array_merge( $image, $mergedArray, $orientation );
+			// Everything above can read the full attachment metadata, but it ends up in the page as
+			// data-gallery-images, and the front-end only needs the dimensions. Every size and the EXIF
+			// were bloating the HTML of big galleries (wp.org forum, 2026-09). The map layout returns
+			// earlier with its own data.
+			$item = array_merge( $image, $mergedArray, $orientation );
+			$meta = is_array( $image['meta'] ) ? $image['meta'] : [];
+			$item['meta'] = [ 'width' => $meta['width'] ?? null, 'height' => $meta['height'] ?? null ];
+			$result[] = $item;
 		}
 
 		$this->gallery_process = $previous_gallery_process;
