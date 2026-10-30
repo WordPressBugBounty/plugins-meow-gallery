@@ -187,14 +187,15 @@ class Meow_MGL_Core {
 		$has_latest_posts = isset( $atts['latest_posts'] ) && !empty( $atts['latest_posts'] );
 		$has_attachments = isset( $atts['attachments'] ) && ( $atts['attachments'] === 'true' || $atts['attachments'] === true || $atts['attachments'] === 1 || $atts['attachments'] === '1' );
 
+		// Like WordPress core, "ids" wins over "id". Only the flag is cleared: "ids" is read below.
 		if ( $has_id && $has_ids ) {
-			unset( $atts['ids'] );
+			$has_id = false;
 			error_log( "⚠️ Meow Gallery: in gallery $atts[id] both 'id' and 'ids' attributes are used in the same shortcode. 'id' will be ignored." );
 		}
 
 		// Get the IDs
 		#region media_ids
-		if ( $has_id && !$has_ids ) {
+		if ( $has_id ) {
 			$shortcode_id = $atts['id'];
 
 			try {
@@ -361,11 +362,15 @@ class Meow_MGL_Core {
 		// Use attached images if still empty
 		if ( empty( $image_ids ) ) {
 
-			if( $has_attachments ) {
-				return "<p class='meow-error'><b>Meow Gallery:</b> No attached medias were found in the current post.</p>";
+			$message = $has_attachments
+				? __( 'No attached medias were found in the current post.', MGL_DOMAIN )
+				: __( 'The gallery is empty.', MGL_DOMAIN );
+			// Return an empty string from this filter to show nothing at all.
+			$message = apply_filters( 'mgl_empty_gallery_message', $message, $atts, $has_attachments );
+			if ( $message === '' ) {
+				return '';
 			}
-
-			return "<p class='meow-error'><b>Meow Gallery:</b> The gallery is empty.</p>";
+			return "<p class='meow-error'><b>Meow Gallery:</b> " . esc_html( $message ) . "</p>";
 		}
 
 		if ( $isPreview ) {
@@ -555,7 +560,7 @@ class Meow_MGL_Core {
 					$aria = !empty( $aria_value ) ? $aria_label . ': ' . $aria_value : $aria_label;
 
 					$custom_link_classes = apply_filters( 'mgl_custom_link_classes', '', $image );
-					$html .= '<a class="' . $custom_link_classes . '" href="' . $image['link_href'] . '" target="' . $image['link_target'] . '" rel="' . $image['link_rel'] . 
+					$html .= '<a class="' . esc_attr( $custom_link_classes ) . '" href="' . $image['link_href'] . '" target="' . esc_attr( $image['link_target'] ?? '' ) . '" rel="' . esc_attr( $image['link_rel'] ?? '' ) .
 					'" aria-label="' . $aria . '">';
 					$html .= $image['img_html'];
 					$html .= '</a>';
@@ -794,7 +799,8 @@ class Meow_MGL_Core {
 			'carousel_arrow_nav_enabled' => true,
 			'carousel_dot_nav_enabled' => true,
 			'carousel_infinite' => false,
-			'map_engine' => 'googlemaps',
+			// Only used when the option is absent (fresh installs): Google Maps errors without a token.
+			'map_engine' => 'openstreetmap',
 			'map_height' => 500,
 			'map_zoom' => 10,
 			'map_gutter' => 10,

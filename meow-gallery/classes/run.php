@@ -133,6 +133,8 @@ class Meow_MGL_Run {
 				'prefix' => MGL_PREFIX,
 				'domain' => MGL_DOMAIN,
 				'is_pro' => class_exists( 'MeowPro_MGL_Core' ),
+				// Installed vs latest version for the header line (common/premium/renewal.php).
+				'version_info' => apply_filters( MGL_PREFIX . '_meowapps_version_info', null ),
 				// Same check as MeowKit_MGL_Admin::is_registered(), which lives in another class.
 				'is_registered' => !!apply_filters( MGL_PREFIX . '_meowapps_is_registered', false, MGL_PREFIX ),
 				'rest_nonce' => wp_create_nonce( 'wp_rest' ),
