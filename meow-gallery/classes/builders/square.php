@@ -21,8 +21,8 @@ class Meow_MGL_Builders_Square extends Meow_MGL_Builders_Core {
 
 	function build_next_cell( $id, $data ) {
 		$html = parent::build_next_cell( $id, $data );
-		$columns = ( isset( $this->atts['columns'] ) ? $this->atts['columns'] : Meow_MGL_Core::get_plugin_option( 'square_columns', 5 ) ) + 1;
-		$html = str_replace( '100vw', 100 / $columns . 'vw', $html );
+		$columns = isset( $this->atts['columns'] ) ? $this->atts['columns'] : Meow_MGL_Core::get_plugin_option( 'square_columns', 5 );
+		$html = Meow_MGL_Core::square_sizes( $html, $columns, $data['meta'] ?? [] );
 		return $html;
 	}
 

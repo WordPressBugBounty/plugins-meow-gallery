@@ -1058,6 +1058,34 @@ class Meow_MGL_Core {
     return $base_class;
 	}
 
+	// Square cells crop with object-fit: cover, so a landscape image is drawn wider than its cell
+	// (by width / height) while the browser picks the srcset candidate from the cell width: landscape
+	// photos came out blurry, portrait ones fine (wp.org "Square layout preview resolution", 2026-11).
+	// The sizes attribute is rebuilt with that ratio and the layout's breakpoints (3 columns under
+	// 768px, 2 under 460px, 1 under 360px), without WordPress's "auto", which measures the cell.
+	public static function square_sizes( $html, $columns, $meta ) {
+		$ratio = 1;
+		if ( !empty( $meta['width'] ) && !empty( $meta['height'] ) ) {
+			$ratio = max( 1, $meta['width'] / $meta['height'] );
+		}
+		$columns = max( 1, (int)$columns );
+		$vw = function( $cols ) use ( $ratio ) {
+			return round( 100 / $cols * $ratio, 2 ) . 'vw';
+		};
+		$sizes = [];
+		if ( $columns > 1 ) {
+			$sizes[] = '(max-width: 360px) ' . $vw( 1 );
+		}
+		if ( $columns > 2 ) {
+			$sizes[] = '(max-width: 460px) ' . $vw( 2 );
+		}
+		if ( $columns > 3 ) {
+			$sizes[] = '(max-width: 768px) ' . $vw( 3 );
+		}
+		$sizes[] = $vw( $columns );
+		return preg_replace( '/\ssizes="[^"]*"/', ' sizes="' . implode( ', ', $sizes ) . '"', $html, 1 );
+	}
+
 	private function get_img_html( $id, $size, $layout, $atts, $data, $noLightbox ) {
 
 		//check if the media is a video
@@ -1092,8 +1120,8 @@ class Meow_MGL_Core {
 		}
 		else if ( $layout === 'square' ) {
 			$square_column = $this->get_option( 'square_columns', 5 );
-			$columns = ( isset( $atts['columns'] ) ? $atts['columns'] : $square_column ) + 1;
-			$img_html = str_replace( '100vw', 100 / $columns . 'vw', $img_html );
+			$columns = isset( $atts['columns'] ) ? $atts['columns'] : $square_column;
+			$img_html = self::square_sizes( $img_html, $columns, $data['meta'] ?? [] );
 		}
 		else if ( $layout === 'cascade' ) {
 			$img_html = str_replace( '100vw', 100 / 3 . 'vw', $img_html );
