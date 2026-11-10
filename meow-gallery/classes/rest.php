@@ -547,8 +547,10 @@ class Meow_MGL_Rest
 	function rest_latest_photos( $request ) {
 
 		$search = trim( $request->get_param( 'search' ) );
-		$offset = trim( $request->get_param( 'offset' ) );
-		$limit = trim( $request->get_param( 'limit' ) );
+		$offset = absint( $request->get_param( 'offset' ) );
+		// Was concatenated raw into the LIMIT clause (SQL injection, reported by Wordfence).
+		$limit = absint( $request->get_param( 'limit' ) );
+		$limit = $limit > 0 ? min( $limit, 100 ) : 24;
 
 		$except = json_decode( trim( $request->get_param( 'except' ) ), true );
 		$unusedImages = trim( $request->get_param( 'unusedImages' ) );
@@ -595,7 +597,7 @@ class Meow_MGL_Rest
 				AND p.post_status='inherit' 
 				$where_search_clause 
 				ORDER BY p.post_modified DESC 
-				LIMIT %d, $limit", $offset
+				LIMIT %d, %d", $offset, $limit
 			), OBJECT
 		);
 		$posts_count = ( int )$wpdb->get_var(

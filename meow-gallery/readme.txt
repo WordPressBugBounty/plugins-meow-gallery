@@ -5,7 +5,7 @@ Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 5.5.9
+Stable tag: 5.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,10 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.6.0 (2026/11/10) =
+* Fix: Security: SQL injection in the latest photos REST endpoint by casting the limit and offset.
+* Fix: Blurry photos in the square layout caused by WordPress adding auto sizes back to the images.
 
 = 5.5.9 (2026/11/08) =
 * Fix: Blurry landscape photos in the Square layout, the browser now gets the right image size.

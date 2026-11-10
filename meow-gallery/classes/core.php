@@ -40,6 +40,7 @@ class Meow_MGL_Core {
 
 		// The gallery build process should only be enabled if the request is non-asynchronous
 		add_filter( 'wp_get_attachment_image_attributes', array( $this, 'wp_get_attachment_image_attributes' ), 25, 3 );
+		add_filter( 'wp_content_img_tag', array( $this, 'keep_square_sizes' ), 20 );
 
 		if ( !MeowKit_MGL_Helpers::is_asynchronous_request()  ) {
 
@@ -1083,7 +1084,17 @@ class Meow_MGL_Core {
 			$sizes[] = '(max-width: 768px) ' . $vw( 3 );
 		}
 		$sizes[] = $vw( $columns );
-		return preg_replace( '/\ssizes="[^"]*"/', ' sizes="' . implode( ', ', $sizes ) . '"', $html, 1 );
+		return preg_replace( '/\ssizes="[^"]*"/', ' sizes="' . implode( ', ', $sizes ) . '" data-mgl-sizes="1"', $html, 1 );
+	}
+
+	// WordPress puts "auto, " back in front of sizes when it filters the post content (lazy images),
+	// and browsers that support it then measure the cell again, undoing square_sizes() (5.5.9 still
+	// blurry on the wp.org thread). Drop it again on the images square_sizes() marked.
+	function keep_square_sizes( $image ) {
+		if ( strpos( $image, 'data-mgl-sizes' ) === false ) {
+			return $image;
+		}
+		return preg_replace( '/\ssizes="auto,\s*/i', ' sizes="', $image, 1 );
 	}
 
 	private function get_img_html( $id, $size, $layout, $atts, $data, $noLightbox ) {
