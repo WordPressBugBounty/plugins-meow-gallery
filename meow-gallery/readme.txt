@@ -5,7 +5,7 @@ Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 5.6.0
+Stable tag: 5.6.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,10 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.6.1 (2026/11/13) =
+* Fix: Square layout now keeps its sizes marker through the image filter, so square tiles load the sharp image.
+* Update: Synced the shared Meow Apps library, including the license block and pricing data.
 
 = 5.6.0 (2026/11/10) =
 * Fix: Security: SQL injection in the latest photos REST endpoint by casting the limit and offset.

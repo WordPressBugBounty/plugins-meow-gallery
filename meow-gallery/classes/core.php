@@ -1145,6 +1145,7 @@ class Meow_MGL_Core {
 				'loading'  => true,
 				'tabindex' => true,
 				'sizes'    => true,
+				'data-mgl-sizes' => true,
 				'class'    => true,
 				'id'       => true,
 				'width'    => true,
