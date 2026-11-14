@@ -5,7 +5,7 @@ Donate link: https://www.patreon.com/meowapps
 Requires at least: 6.0
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 5.6.1
+Stable tag: 5.6.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -56,6 +56,9 @@ SEO-friendly with automatic sitemap integration (works with Yoast SEO and others
 You can find more information on [Meow Apps: Meow Gallery](https://meowapps.com/meow-gallery/).
 
 == Changelog ==
+
+= 5.6.2 (2026/11/13) =
+* Fix: Hide unpublished, private and password-protected posts from post galleries.
 
 = 5.6.1 (2026/11/13) =
 * Fix: Square layout now keeps its sizes marker through the image filter, so square tiles load the sharp image.

@@ -327,6 +327,13 @@ class Meow_MGL_Core {
 			$featured_images = [];
 
 			foreach ($posts_ids as $key => $post_id) {
+				// The gallery prints each post's title and excerpt in the page, for every visitor: a draft,
+				// pending or private post this visitor can't read is left out (security report, 2026-11).
+				$post = get_post( $post_id );
+				if ( !$post || ( !is_post_publicly_viewable( $post ) && !current_user_can( 'read_post', $post->ID ) ) ) {
+					unset($posts_ids[$key]);
+					continue;
+				}
 				$image_id = get_post_thumbnail_id($post_id);
 				if ($image_id === false || $image_id == 0) {
 					unset($posts_ids[$key]);
@@ -1025,7 +1032,7 @@ class Meow_MGL_Core {
 
 				$mergedArray['featured_post_id'] = $post_id;
 				$mergedArray['featured_post_title'] = $post->post_title;
-				$mergedArray['featured_post_excerpt'] = $post->post_excerpt;
+				$mergedArray['featured_post_excerpt'] = post_password_required( $post ) ? '' : $post->post_excerpt;
 				$mergedArray['featured_post_url'] = get_permalink( $post_id );
 
 			}
